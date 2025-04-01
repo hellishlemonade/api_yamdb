@@ -1,7 +1,19 @@
 from rest_framework import serializers
 from django.core.exceptions import ValidationError
 
-from reviews.models import Title
+from reviews.models import Genre, Title
+
+
+class GenreSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для модели Genre.
+
+    Используется для работы с данными жанров.
+    """
+    class Meta:
+        model = Genre
+        exclude = ['id',]
+        lookup_fields = ['slug',]
 
 
 class TitleReadSerializer(serializers.ModelSerializer):
@@ -10,7 +22,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
 
     Используется для получения информации о произведении.
     """
-    genre = GenreSerializer(read_only=True)  # заглушка
+    genre = GenreSerializer(read_only=True)
     category = CategorySerializer(read_only=True)  # заглушка
     rating = serializers.IntegerField(read_only=True, required=False)
 

@@ -72,3 +72,39 @@ class Title(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Genre(models.Model):
+    """
+    Модель для представления жанров произведений.
+
+    Поля:
+        name (CharField): Название жанра.
+        slug (SlugField): Уникальный слаг жанра, используется в URL.
+
+    Метаданные:
+        verbose_name (str): Человекочитаемое имя в единственном числе.
+        verbose_name_plural (str): Человекочитаемое имя во множественном числе.
+
+    Методы:
+        __str__: Возвращает строковое представление жанра - название.
+    """
+    name = models.CharField(
+        verbose_name='Название жанра',
+        max_length=100,
+        help_text='Название жанра'
+    )
+    slug = models.SlugField(
+        verbose_name='Слаг жанра',
+        max_length=50,
+        help_text='Уникальный слаг жанра',
+        unique=True,
+        db_index=True
+    )
+
+    class Meta:
+        verbose_name = 'Жанр'
+        verbose_name_plural = 'Жанры'
+
+    def __str__(self):
+        return self.name
