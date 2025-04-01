@@ -77,5 +77,17 @@ class CustomUser(AbstractUser):
             self.confirmation_code = secrets.token_urlsafe(16)
         super().save(*args, **kwargs)
 
+    def is_user(self):
+        """Проверяет, является ли пользователь аутентифицированным."""
+        return self.role == self.USER
+
+    def is_moderator(self):
+        """Проверяет, является ли пользователь модератором."""
+        return self.role == self.MODERATOR
+
+    def is_admin(self):
+        """Проверяет, является ли пользователь администратором."""
+        return self.role == self.ADMIN
+
     def __str__(self):
         return self.username
