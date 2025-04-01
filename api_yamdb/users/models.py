@@ -11,6 +11,14 @@ class CustomUser(AbstractUser):
     Кастомная модель юзера. Содержит дополнительные поля, расширяющие
     дефолтную модель, такие как: "confirmation_code", ""bio", "role".
     """
+    USER = 'user'
+    MODERATOR = 'moderator'
+    ADMIN = 'admin'
+    USERS = [
+        (USER, 'Пользователь'),
+        (MODERATOR, 'Модератор'),
+        (ADMIN, 'Администратор'),
+    ]
 
     password = models.CharField(
         'Пароль',
@@ -48,7 +56,8 @@ class CustomUser(AbstractUser):
     role = models.CharField(
         'Роль',
         max_length=10,
-        default='user',
+        choices=USERS,
+        default=USER,
         blank=False,
         null=False)
 
