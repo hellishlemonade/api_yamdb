@@ -2,6 +2,7 @@ import secrets
 
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework.exceptions import APIException, status
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
@@ -151,8 +152,9 @@ class TokenObtainSerializer(serializers.Serializer):
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
-            raise serializers.ValidationError(
-                'Пользователь с таким "username" не существует.')
+            raise APIException(
+                detail='Пользователь с таким "username" не существует.',
+                code=status.HTTP_404_NOT_FOUND)
         if user.confirmation_code != confirmation_code:
             raise serializers.ValidationError(
                 'Неверный код подверждения.')
