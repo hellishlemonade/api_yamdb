@@ -1,9 +1,12 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
+from rest_framework.filters import SearchFilter
 
-from reviews.models import Title
+from reviews.models import Genre, Title
 from .filters import TitleFilter
-from .serializers import TitleReadSerializer, TitleWriteSerializer
+from .mixins import BaseModelMixin
+from .serializers import (GenreSerializer,
+                          TitleReadSerializer, TitleWriteSerializer)
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -53,3 +56,45 @@ class TitleViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return TitleReadSerializer
         return TitleWriteSerializer
+
+
+class GenreViewSet(BaseModelMixin):
+    """
+    ViewSet для модели Genre.
+
+    Предоставляет операции создания, просмотра списка и удаления для жанров.
+    Не поддерживает операции обновления и детального просмотра
+    отдельных объектов.
+    Разрешает чтение всем пользователям,
+    создание и удаление только администраторам.
+
+    queryset:
+        queryset объектов Genre, включающий все жанры.
+
+    serializer_class:
+        GenreSerializer - сериализатор для преобразования данных жанров.
+
+    permission_classes:
+        Права доступа определены классом IsAdminOrReadOnly.
+        Разрешает чтение всем, создание и удаление только администраторам.
+
+    filter_backends:
+        Используется SearchFilter для фильтрации списка жанров по полю 'name'.
+
+    search_fields:
+        Поле, по которому осуществляется поиск: 'name'.
+
+    lookup_field:
+        Поле, используемое для поиска жанра в URL : 'slug'.
+
+    Действия, предоставляемые ViewSet'ом (унаследованы от BaseModelMixin):
+    - create (POST): Создание нового жанра.
+    - list (GET): Получение списка жанров с возможностью фильтрации по имени.
+    - destroy (DELETE): Удаление жанра по слагу (lookup_field = 'slug').
+    """
+    queryset = Genre.objects.all()
+    serializer_class = GenreSerializer
+    permission_classes = [IsAdminOrReadOnly,]  # заглушка
+    filter_backends = [SearchFilter,]
+    search_fields = ['name',]
+    lookup_field = 'slug'
