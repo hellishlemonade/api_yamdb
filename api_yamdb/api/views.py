@@ -1,13 +1,24 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.filters import SearchFilter
+from django.contrib.auth import get_user_model
 
 from reviews.models import Category, Genre, Title
 from .filters import TitleFilter
 from .mixins import BaseModelMixin
 from .permissions import IsAdminOrReadOnly
-from .serializers import (CategorySerializer, GenreSerializer,
-                          TitleReadSerializer, TitleWriteSerializer)
+from .serializers import (
+    CategorySerializer,
+    GenreSerializer,
+    TitleReadSerializer,
+    TitleWriteSerializer,
+    SignUpSerializer,
+    TokenObtainSerializer,
+)
+
+
+User = get_user_model()
+
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -143,3 +154,25 @@ class CategoryViewSet(BaseModelMixin):
     filter_backends = [SearchFilter,]
     search_fields = ['name',]
     lookup_field = 'slug'
+
+
+class SignUpViewSet(CreateUserModelMixin):
+    """
+    ViewSet для модели CustomUser.
+
+    Наследуясь от CreateUserModelMixin позволяет создавать пользователей
+    и коды подтверждения с помощью сериализатора.
+    """
+    queryset = User.objects.all()
+    serializer_class = SignUpSerializer
+
+
+class TokenViewSet(CreateUserModelMixin):
+    """
+    ViewSet для модели CustomUser.
+
+    Наследуясь от CreateUserModelMixin позволяет создавать токены для
+    пользователей с помощью сериализатора.
+    """
+    queryset = User.objects.all()
+    serializer_class = TokenObtainSerializer
