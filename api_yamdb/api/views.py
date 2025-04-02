@@ -3,10 +3,12 @@ from rest_framework import viewsets
 from rest_framework.filters import SearchFilter
 from django.contrib.auth import get_user_model
 
-from reviews.models import Genre, Title
+from reviews.models import Category, Genre, Title
 from .filters import TitleFilter
-from .mixins import BaseModelMixin, CreateUserModelMixin
+from .mixins import BaseModelMixin
+from .permissions import IsAdminOrReadOnly
 from .serializers import (
+    CategorySerializer,
     GenreSerializer,
     TitleReadSerializer,
     TitleWriteSerializer,
@@ -16,6 +18,7 @@ from .serializers import (
 
 
 User = get_user_model()
+
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -49,7 +52,7 @@ class TitleViewSet(viewsets.ModelViewSet):
                 # после добавления модели Review
                 # будем добавлять средний рейтинг
                 .all())
-    permission_classes = [IsAdminOrReadOnly,]  # заглушка
+    permission_classes = [IsAdminOrReadOnly,]
     filter_backends = [DjangoFilterBackend,]
     filterset_class = TitleFilter
 
@@ -103,7 +106,51 @@ class GenreViewSet(BaseModelMixin):
     """
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    permission_classes = [IsAdminOrReadOnly,]  # заглушка
+    permission_classes = [IsAdminOrReadOnly,]
+    filter_backends = [SearchFilter,]
+    search_fields = ['name',]
+    lookup_field = 'slug'
+
+
+class CategoryViewSet(BaseModelMixin):
+    """
+    ViewSet для модели Category.
+
+    Предоставляет операции создания, просмотра списка и удаления для категорий.
+    Не поддерживает операции обновления и детального просмотра
+    отдельных объектов.
+    Разрешает чтение всем пользователям,
+    создание и удаление только администраторам.
+
+    queryset:
+        queryset объектов Category, включающий все категории.
+
+    serializer_class:
+        CategorySerializer - сериализатор для преобразования данных категорий.
+
+    permission_classes:
+        Права доступа определены классом IsAdminOrReadOnly.
+        Разрешает чтение всем, создание и удаление только администраторам.
+
+    filter_backends:
+        Используется SearchFilter для фильтрации списка категорий
+        по полю 'name'.
+
+    search_fields:
+        Поле, по которому осуществляется поиск: 'name'.
+
+    lookup_field:
+        Поле, используемое для поиска категории в URL : 'slug'.
+
+    Действия, предоставляемые ViewSet'ом (унаследованы от BaseModelMixin):
+    - create (POST): Создание новой категории.
+    - list (GET): Получение списка категорий с возможностью фильтрации
+                  по имени.
+    - destroy (DELETE): Удаление категории по слагу (lookup_field = 'slug').
+    """
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [IsAdminOrReadOnly,]
     filter_backends = [SearchFilter,]
     search_fields = ['name',]
     lookup_field = 'slug'

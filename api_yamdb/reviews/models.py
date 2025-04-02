@@ -108,3 +108,39 @@ class Genre(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Category(models.Model):
+    """
+    Модель для представления категорий произведений.
+
+    Поля:
+        name (CharField): Название категории.
+        slug (SlugField): Уникальный слаг категории, используется в URL.
+
+    Метаданные:
+        verbose_name (str): Человекочитаемое имя в единственном числе.
+        verbose_name_plural (str): Человекочитаемое имя во множественном числе.
+
+    Методы:
+        __str__: Возвращает строковое представление категории - название.
+    """
+    name = models.CharField(
+        verbose_name='Название категории',
+        max_length=100,
+        help_text='Название категории'
+    )
+    slug = models.SlugField(
+        verbose_name='Слаг категории',
+        max_length=50,
+        help_text='Уникальный слаг категории',
+        unique=True,
+        db_index=True
+    )
+
+    class Meta:
+        verbose_name = 'Категория'
+        verbose_name_plural = 'Категории'
+
+    def __str__(self):
+        return self.name

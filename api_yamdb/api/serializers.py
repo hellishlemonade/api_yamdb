@@ -7,11 +7,22 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 
-from reviews.models import Genre, Title
+from reviews.models import Category, Genre, Title
 from api_yamdb.settings import DEFAULT_FROM_EMAIL
 
 
 User = get_user_model()
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для модели Category.
+
+    Используется для работы с данными категорий.
+    """
+    class Meta:
+        model = Category
+        exclude = ['id',]
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -32,7 +43,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
     Используется для получения информации о произведении.
     """
     genre = GenreSerializer(read_only=True)
-    category = CategorySerializer(read_only=True)  # заглушка
+    category = CategorySerializer(read_only=True)
     rating = serializers.IntegerField(read_only=True, required=False)
 
     class Meta:
