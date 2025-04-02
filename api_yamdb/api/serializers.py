@@ -168,6 +168,12 @@ class TokenObtainSerializer(serializers.Serializer):
                 code=status.HTTP_404_NOT_FOUND)
         if user.confirmation_code != confirmation_code:
             raise serializers.ValidationError(
-                'Неверный код подверждения.')
-        token = AccessToken.for_user(user)
-        return {'token': str(token)}
+                {'confirmation_code': 'Неверный код подверждения.'})
+        attrs['token'] = str(AccessToken.for_user(user))
+        return attrs
+
+    def to_representation(self, instance):
+        return {'token': instance['token']}
+
+    def create(self, validated_data):
+        return validated_data
