@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 
 from reviews.models import Category, Genre, Title
 from .filters import TitleFilter
-from .mixins import BaseModelMixin
+from .mixins import BaseModelMixin, CreateUserModelMixin
 from .permissions import IsAdminOrReadOnly
 from .serializers import (
     CategorySerializer,
