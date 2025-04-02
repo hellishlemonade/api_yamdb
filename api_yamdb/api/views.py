@@ -1,24 +1,26 @@
 from django_filters.rest_framework import DjangoFilterBackend
+from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
 from rest_framework.filters import SearchFilter
-from django.contrib.auth import get_user_model
+from rest_framework.pagination import PageNumberPagination
 
-from reviews.models import Category, Genre, Title
+from reviews.models import Category, Comment, Genre, Review, Title
 from .filters import TitleFilter
 from .mixins import BaseModelMixin, CreateUserModelMixin
-from .permissions import IsAdminOrReadOnly
+from .permissions import ContentManagePermission, IsAdminOrReadOnly
 from .serializers import (
     CategorySerializer,
+    CommentSerializer,
     GenreSerializer,
+    ReviewSerializer,
+    SignUpSerializer,
     TitleReadSerializer,
     TitleWriteSerializer,
-    SignUpSerializer,
-    TokenObtainSerializer,
+    TokenObtainSerializer
 )
 
-
 User = get_user_model()
-
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -176,3 +178,47 @@ class TokenViewSet(CreateUserModelMixin):
     """
     queryset = User.objects.all()
     serializer_class = TokenObtainSerializer
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet для модели Review.
+    """
+    queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
+    pagination_class = PageNumberPagination
+    permission_classes = ContentManagePermission
+
+    def get_title(self):
+        return get_object_or_404(Title, id=self.kwargs['title_id'])
+
+    def get_queryset(self):
+        return Review.objects.filter(title=self.get_title())
+
+    def perform_create(self, serializer):
+        serializer.save(
+            title=self.get_title(),
+            author=self.request.user
+        )
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet для модели Comment.
+    """
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    pagination_class = PageNumberPagination
+    permission_classes = ContentManagePermission
+
+    def get_review(self):
+        return get_object_or_404(Review, id=self.kwargs['review_id'])
+
+    def get_queryset(self):
+        return Comment.objects.filter(review=self.get_review())
+
+    def perform_create(self, serializer):
+        serializer.save(
+            review=self.get_review(),
+            author=self.request.user
+        )
