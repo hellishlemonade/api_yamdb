@@ -5,7 +5,7 @@ from .validators import validate_year
 
 User = get_user_model()
 
-RATING_VALUES = [range(11)]
+RATING_VALUES = [(i, str(i)) for i in range(11)]
 
 
 class Title(models.Model):
@@ -96,7 +96,7 @@ class Genre(models.Model):
     """
     name = models.CharField(
         verbose_name='Название жанра',
-        max_length=100,
+        max_length=256,
         help_text='Название жанра'
     )
     slug = models.SlugField(
@@ -132,7 +132,7 @@ class Category(models.Model):
     """
     name = models.CharField(
         verbose_name='Название категории',
-        max_length=100,
+        max_length=256,
         help_text='Название категории'
     )
     slug = models.SlugField(
@@ -164,7 +164,7 @@ class Review(models.Model):
         User, on_delete=models.CASCADE, related_name='reviews'
     )
     title = models.ForeignKey(
-        Title, on_delete=models.CASCADE, related_name='titles'
+        Title, on_delete=models.CASCADE, related_name='reviews'
     )
 
     def __str__(self):

@@ -1,3 +1,4 @@
+from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
@@ -50,10 +51,9 @@ class TitleViewSet(viewsets.ModelViewSet):
         определенным в TitleFilter (например, по категории, жанру, году)."
     """
     queryset = (Title.objects
-                # .annotate(rating=Avg('reviews__score'))
-                # после добавления модели Review
-                # будем добавлять средний рейтинг
+                .annotate(rating=Avg('reviews__score'))
                 .all())
+    http_method_names = ['get', 'post', 'patch', 'delete',]
     permission_classes = [IsAdminOrReadOnly,]
     filter_backends = [DjangoFilterBackend,]
     filterset_class = TitleFilter
