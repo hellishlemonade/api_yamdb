@@ -1,14 +1,14 @@
 import secrets
 
-from rest_framework import serializers
-from rest_framework_simplejwt.tokens import AccessToken
-from rest_framework.exceptions import APIException, status
-from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
+from rest_framework import serializers, validators
+from rest_framework.exceptions import APIException, status
+from rest_framework_simplejwt.tokens import AccessToken
 
-from reviews.models import Category, Genre, Title
 from api_yamdb.settings import DEFAULT_FROM_EMAIL
+from reviews.models import Category, Comment, Genre, Review, Title
 
 
 User = get_user_model()
@@ -177,3 +177,40 @@ class TokenObtainSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         return validated_data
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для модели Review.
+    """
+    author = serializers.SlugRelatedField(
+        read_only=True,
+        slug_field='username'
+    )
+
+    class Meta:
+        model = Review
+        fields = ('id', 'text', 'author', 'score', 'pub_date')
+        # read_only_fields = ('title',) пока заглушка
+        validators = [
+            validators.UniqueTogetherValidator(
+                queryset=Review.objects.all(),
+                fields=('author', 'title'),
+                message='Можно оставить только один отзыв на произведение.'
+            )
+        ]
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для модели Comment.
+    """
+    author = serializers.SlugRelatedField(
+        read_only=True,
+        slug_field='username'
+    )
+
+    class Meta:
+        model = Comment
+        fields = ('id', 'text', 'author', 'pub_date')
+        # read_only_fields = ('review',) пока заглушка

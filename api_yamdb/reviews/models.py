@@ -1,6 +1,11 @@
+from django.contrib.auth import get_user_model
 from django.db import models
 
 from .validators import validate_year
+
+User = get_user_model()
+
+RATING_VALUES = [range(11)]
 
 
 class Title(models.Model):
@@ -144,3 +149,52 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Review(models.Model):
+    """
+    Модель для представления отзывов на произведения.
+    """
+    text = models.TextField()
+    score = models.IntegerField(choices=RATING_VALUES)
+    pub_date = models.DateTimeField(
+        'Дата публикации', auto_now_add=True, db_index=True
+    )
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='reviews'
+    )
+    title = models.ForeignKey(
+        Title, on_delete=models.CASCADE, related_name='titles'
+    )
+
+    def __str__(self):
+        return self.text[:15]
+
+    class Meta:
+        ordering = ('pub_date', 'title')
+        constraints = [
+            models.UniqueConstraint(
+                fields=['author', 'title'], name='unique_review'),
+        ]
+
+
+class Comment(models.Model):
+    """
+    Модель для представления комментариев на отзывы пользователей.
+    """
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='comments'
+    )
+    review = models.ForeignKey(
+        Review, on_delete=models.CASCADE, related_name='comments'
+    )
+    text = models.TextField()
+    pub_date = models.DateTimeField(
+        'Дата публикации', auto_now_add=True, db_index=True
+    )
+
+    def __str__(self):
+        return self.text[:15]
+
+    class Meta:
+        ordering = ('pub_date', 'review')
