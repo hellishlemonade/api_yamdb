@@ -8,7 +8,8 @@ from rest_framework.exceptions import APIException, status
 from rest_framework_simplejwt.tokens import AccessToken
 
 from api_yamdb.settings import DEFAULT_FROM_EMAIL
-from reviews.models import Category, Comment, Genre, Review, Title
+from reviews.models import (
+    Category, Comment, Genre, RATING_VALUES, Review, Title)
 
 
 User = get_user_model()
@@ -181,18 +182,19 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only=True,
         slug_field='username'
     )
+    score = serializers.ChoiceField(choices=RATING_VALUES)
 
     class Meta:
         model = Review
         fields = ('id', 'text', 'author', 'score', 'pub_date')
-        # read_only_fields = ('title',) пока заглушка
-        validators = [
-            validators.UniqueTogetherValidator(
-                queryset=Review.objects.all(),
-                fields=('author', 'title'),
-                message='Можно оставить только один отзыв на произведение.'
-            )
-        ]
+        read_only_fields = ('title',)
+        # validators = [
+        #     validators.UniqueTogetherValidator(
+        #         queryset=Review.objects.all(),
+        #         fields=('author', 'title'),
+        #         message='Можно оставить только один отзыв на произведение.'
+        #     )
+        # ]
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -207,4 +209,4 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ('id', 'text', 'author', 'pub_date')
-        # read_only_fields = ('review',) пока заглушка
+        read_only_fields = ('review',)
