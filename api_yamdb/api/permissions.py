@@ -17,4 +17,26 @@ class IsAdminOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return True
-        return request.user.is_authenticated and request.user.is_admin()
+        return request.user.is_user() and request.user.is_admin()
+
+
+class ContentManagePermission(permissions.BasePermission):
+    """
+    Права доступа к контенту: ресурсы reviews и comments.
+
+    Изменение постов и комментариев доступно следующим категориям ползователей:
+    Автор поста/комментария, Модератор, Администратор, Суперпользователь.
+    """
+    message = 'Недостаточно прав.'
+
+    def has_permission(self, request, view):
+        return (request.method in permissions.SAFE_METHODS
+                or request.user.is_user())
+
+    def has_object_permission(self, request, view, obj):
+        return any([
+            request.method in permissions.SAFE_METHODS,
+            obj.author == request.user,
+            request.user.is_moderator(),
+            request.user.is_admin()
+            ])
