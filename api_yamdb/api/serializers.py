@@ -42,7 +42,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
 
     Используется для получения информации о произведении.
     """
-    genre = GenreSerializer(read_only=True)
+    genre = GenreSerializer(read_only=True, many=True)
     category = CategorySerializer(read_only=True)
     rating = serializers.IntegerField(read_only=True, required=False)
 
@@ -75,11 +75,11 @@ class TitleWriteSerializer(serializers.ModelSerializer):
         """
         Проверяет корректность данных перед сохранением.
 
-        Проверяет наличие категории и жанра.
+        Проверяет наличие категории и жанра, если они предоставлены.
         """
-        if not attrs.get('category'):
+        if 'category' in attrs and not attrs.get('category'):
             raise ValidationError('Необходимо указать категорию.')
-        if not attrs.get('genre'):
+        if 'genre' in attrs and not attrs.get('genre'):
             raise ValidationError('Необходимо указать хотя бы 1 жанр.')
         return attrs
 
