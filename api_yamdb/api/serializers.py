@@ -3,7 +3,8 @@ import secrets
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
-from rest_framework import serializers, validators
+from django.shortcuts import get_object_or_404
+from rest_framework import serializers
 from rest_framework.exceptions import APIException, status
 from rest_framework_simplejwt.tokens import AccessToken
 
@@ -188,13 +189,16 @@ class ReviewSerializer(serializers.ModelSerializer):
         model = Review
         fields = ('id', 'text', 'author', 'score', 'pub_date')
         read_only_fields = ('title',)
-        # validators = [
-        #     validators.UniqueTogetherValidator(
-        #         queryset=Review.objects.all(),
-        #         fields=('author', 'title'),
-        #         message='Можно оставить только один отзыв на произведение.'
-        #     )
-        # ]
+
+    def validate(self, attrs):
+        title = get_object_or_404(
+            Title, id=self.context['view'].kwargs.get('title_id'))
+        request = self.context['view'].request
+        author = request.user
+        if request.method == 'POST':
+            if Review.objects.filter(author=author, title=title).exists():
+                raise ValidationError('Такой отзыв уже есть.')
+        return super().validate(attrs)
 
 
 class CommentSerializer(serializers.ModelSerializer):
