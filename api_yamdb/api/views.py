@@ -198,6 +198,15 @@ class TokenViewSet(CreateUserModelMixin):
     queryset = User.objects.all()
     serializer_class = TokenObtainSerializer
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        response_data = serializer.data
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            response_data, status=status.HTTP_200_OK, headers=headers)
+
 
 class ReviewViewSet(viewsets.ModelViewSet):
     """

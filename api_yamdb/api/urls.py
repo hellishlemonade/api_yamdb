@@ -13,14 +13,15 @@ from .views import (
 )
 
 VERSION = 'v1'
+AUTH = 'auth'
 
 
 router = SimpleRouter()
 router.register('titles', TitleViewSet, basename='titles')
 router.register('genres', GenreViewSet, basename='genres')
 router.register('categories', CategoryViewSet, basename='categories')
-router.register('auth/signup', SignUpViewSet)
-router.register('auth/token', TokenViewSet)
+router.register(f'{AUTH}/signup', SignUpViewSet)
+router.register(f'{AUTH}/token', TokenViewSet)
 router.register('users', UserAdminViewSet)
 router.register(
     r'titles/(?P<title_id>\d+)/reviews',
