@@ -58,6 +58,7 @@ class Title(models.Model):
     )
     genre = models.ManyToManyField(
         'Genre',
+        through='Title_genre',
         verbose_name='Жанр',
         help_text='Жанр произведения',
         related_name='titles',
@@ -113,6 +114,32 @@ class Genre(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Title_genre(models.Model):
+    """
+    Модель для представления связи между жанрами и произведениями.
+
+    Поля:
+        title (ForeignKey): Связь с моделью Title.
+        genre (ForeignKey): Связь с моделью Genre.
+
+    Методы:
+        __str__: Возвращает строковое представление: название - жанр.
+    """
+    title = models.ForeignKey(
+        Title,
+        on_delete=models.CASCADE,
+        related_name='title_genre'
+    )
+    genre = models.ForeignKey(
+        Genre,
+        on_delete=models.CASCADE,
+        related_name='title_genre'
+    )
+
+    def __str__(self):
+        return f'{self.title} - {self.genre}'
 
 
 class Category(models.Model):
