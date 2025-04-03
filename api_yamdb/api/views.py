@@ -205,8 +205,8 @@ class ReviewViewSet(viewsets.ModelViewSet):
     """
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-    pagination_class = PageNumberPagination
-    permission_classes = ContentManagePermission
+    permission_classes = (ContentManagePermission,)
+    http_method_names = ['get', 'post', 'head', 'patch', 'delete']
 
     def get_title(self):
         return get_object_or_404(Title, id=self.kwargs['title_id'])
@@ -227,8 +227,8 @@ class CommentViewSet(viewsets.ModelViewSet):
     """
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    pagination_class = PageNumberPagination
-    permission_classes = ContentManagePermission
+    permission_classes = (ContentManagePermission,)
+    http_method_names = ['get', 'post', 'head', 'patch', 'delete']
 
     def get_review(self):
         return get_object_or_404(Review, id=self.kwargs['review_id'])

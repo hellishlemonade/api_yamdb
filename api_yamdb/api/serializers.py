@@ -3,13 +3,17 @@ import secrets
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
+
+from django.shortcuts import get_object_or_404
 from django.core.validators import RegexValidator
+from rest_framework.exceptions import APIException, status
 from rest_framework import serializers, validators
 from rest_framework.exceptions import NotFound, status
 from rest_framework_simplejwt.tokens import AccessToken
 
 from api_yamdb.settings import DEFAULT_FROM_EMAIL
-from reviews.models import Category, Comment, Genre, Review, Title
+from reviews.models import (
+    Category, Comment, Genre, RATING_VALUES, Review, Title)
 
 
 User = get_user_model()
@@ -253,18 +257,22 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only=True,
         slug_field='username'
     )
+    score = serializers.ChoiceField(choices=RATING_VALUES)
 
     class Meta:
         model = Review
         fields = ('id', 'text', 'author', 'score', 'pub_date')
-        # read_only_fields = ('title',) пока заглушка
-        validators = [
-            validators.UniqueTogetherValidator(
-                queryset=Review.objects.all(),
-                fields=('author', 'title'),
-                message='Можно оставить только один отзыв на произведение.'
-            )
-        ]
+        read_only_fields = ('title',)
+
+    def validate(self, attrs):
+        title = get_object_or_404(
+            Title, id=self.context['view'].kwargs.get('title_id'))
+        request = self.context['view'].request
+        author = request.user
+        if request.method == 'POST':
+            if Review.objects.filter(author=author, title=title).exists():
+                raise ValidationError('Такой отзыв уже есть.')
+        return super().validate(attrs)
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -279,4 +287,4 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ('id', 'text', 'author', 'pub_date')
-        # read_only_fields = ('review',) пока заглушка
+        read_only_fields = ('review',)
