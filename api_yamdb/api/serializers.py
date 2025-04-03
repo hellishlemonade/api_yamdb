@@ -3,8 +3,9 @@ import secrets
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
+from django.core.validators import RegexValidator
 from rest_framework import serializers, validators
-from rest_framework.exceptions import APIException, status
+from rest_framework.exceptions import NotFound, status
 from rest_framework_simplejwt.tokens import AccessToken
 
 from api_yamdb.settings import DEFAULT_FROM_EMAIL
@@ -92,7 +93,7 @@ class SignUpSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('email', 'username')
+        fields = ['email', 'username']
         extra_kwargs = {
             'email': {
                 'required': True,
@@ -100,7 +101,7 @@ class SignUpSerializer(serializers.ModelSerializer):
             },
             'username': {
                 'required': True,
-                'validators': []
+                'validators': [RegexValidator(r'^[\w.@+-]+\Z')]
             }
         }
 
@@ -176,7 +177,7 @@ class TokenObtainSerializer(serializers.Serializer):
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
-            raise APIException(
+            raise NotFound(
                 detail='Пользователь с таким "username" не существует.',
                 code=status.HTTP_404_NOT_FOUND)
         if user.confirmation_code != confirmation_code:
@@ -193,13 +194,17 @@ class TokenObtainSerializer(serializers.Serializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-
+    """
+    Сериализатор для выполнения CRUD операций с моделью CustomUser
+    """
     class Meta:
         model = User
         fields = [
             'username', 'email', 'first_name', 'last_name', 'bio', 'role']
 
     def validate(self, data):
+        if 'username' not in data:
+            return data
         if User.objects.filter(username=data['username']).exists():
             raise serializers.ValidationError(
                 {'username': 'Пользователь с таким username уже существует'}
@@ -221,6 +226,23 @@ class UserSerializer(serializers.ModelSerializer):
             bio=validated_data.get('bio', '')
         )
         return user
+
+
+class MeSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для выполнения операций получения экземпляра
+    и внесения изменений в собственный профиль.
+    """
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'first_name', 'last_name', 'bio', 'role']
+        read_only_fields = ['role']
+        extra_kwargs = {
+            'username': {
+                'required': True,
+                'validators': [RegexValidator(r'^[\w.@+-]+\Z')]
+            }
+        }
 
 
 class ReviewSerializer(serializers.ModelSerializer):

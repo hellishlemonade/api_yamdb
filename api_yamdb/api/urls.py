@@ -21,7 +21,7 @@ router.register('genres', GenreViewSet, basename='genres')
 router.register('categories', CategoryViewSet, basename='categories')
 router.register('auth/signup', SignUpViewSet)
 router.register('auth/token', TokenViewSet)
-router.register('users', UserAdminViewSet, basename='users')
+router.register('users', UserAdminViewSet)
 router.register(
     r'titles/(?P<title_id>\d+)/reviews',
     ReviewViewSet,
