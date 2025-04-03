@@ -40,3 +40,26 @@ class ContentManagePermission(permissions.BasePermission):
             (request.user.is_authenticated and request.user.is_moderator()),
             (request.user.is_authenticated and request.user.is_admin())
             ])
+
+
+class IsAdminPermission(permissions.BasePermission):
+    """
+    Пермишен, дающий право доступа к эндпоинту только пользователю
+    со статусом admin
+    """
+    def has_permission(self, request, view):
+        return (
+            request.user.is_authenticated
+            and (request.user.is_superuser or request.user.is_admin()))
+
+
+class IsUserPermissions(permissions.BasePermission):
+    """
+    Право доступа к своему аккаунту и внесение изменений
+    в свой аккаунт.
+    """
+    def has_permission(self, request, view):
+        return request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        return request.user == obj

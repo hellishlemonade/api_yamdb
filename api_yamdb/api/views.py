@@ -2,13 +2,22 @@ from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets
+from rest_framework import viewsets, status, filters
 from rest_framework.filters import SearchFilter
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.exceptions import MethodNotAllowed
 
 from reviews.models import Category, Comment, Genre, Review, Title
 from .filters import TitleFilter
 from .mixins import BaseModelMixin, CreateUserModelMixin
-from .permissions import ContentManagePermission, IsAdminOrReadOnly
+from .permissions import (
+    ContentManagePermission,
+    IsAdminOrReadOnly,
+    IsAdminPermission,
+    IsUserPermissions
+)
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -17,7 +26,9 @@ from .serializers import (
     SignUpSerializer,
     TitleReadSerializer,
     TitleWriteSerializer,
-    TokenObtainSerializer
+    TokenObtainSerializer,
+    UserSerializer,
+    MeSerializer
 )
 
 User = get_user_model()
@@ -167,6 +178,15 @@ class SignUpViewSet(CreateUserModelMixin):
     queryset = User.objects.all()
     serializer_class = SignUpSerializer
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        response_data = serializer.data
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            response_data, status=status.HTTP_200_OK, headers=headers)
+
 
 class TokenViewSet(CreateUserModelMixin):
     """
@@ -221,3 +241,45 @@ class CommentViewSet(viewsets.ModelViewSet):
             review=self.get_review(),
             author=self.request.user
         )
+
+
+class UserAdminViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet для модели CustomUser.
+
+    Предоставляет операции CRUD за исключением PUT-запросов.
+    """
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAdminPermission]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['username']
+    lookup_field = 'username'
+
+    def get_serializer_class(self):
+        if self.action == 'me':
+            return MeSerializer
+        return UserSerializer
+
+    def update(self, request, *args, **kwargs):
+        """Блокировка PUT запросов"""
+        if request.method == 'PUT':
+            raise MethodNotAllowed('PUT')
+        return super().update(request, *args, **kwargs)
+
+    @action(
+        detail=False,
+        methods=['get', 'patch'],
+        permission_classes=[IsUserPermissions]
+    )
+    def me(self, request):
+        """Эндпоинт /me/ с отдельным сериализатором"""
+        user = request.user
+        if request.method == 'PATCH':
+            serializer = self.get_serializer(
+                user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
