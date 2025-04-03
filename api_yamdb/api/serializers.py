@@ -205,6 +205,12 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'username', 'email', 'first_name', 'last_name', 'bio', 'role']
+        extra_kwargs = {
+            'username': {
+                'required': True,
+                'validators': [RegexValidator(r'^[\w.@+-]+\Z')]
+            }
+        }
 
     def validate(self, data):
         if 'username' not in data:
