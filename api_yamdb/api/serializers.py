@@ -93,6 +93,16 @@ class SignUpSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('email', 'username')
+        extra_kwargs = {
+            'email': {
+                'required': True,
+                'validators': []
+            },
+            'username': {
+                'required': True,
+                'validators': []
+            }
+        }
 
     def validate_username(self, value):
         """
@@ -118,10 +128,13 @@ class SignUpSerializer(serializers.ModelSerializer):
             user = User.objects.get(email=email)
             if user.username != username:
                 raise ValidationError(
-                    'Такой email уже используется другим пользователем.')
-        elif username_exists:
+                    {'email':
+                     'Такой email уже используется другим пользователем.'})
+            else:
+                return data
+        if username_exists:
             raise ValidationError(
-                'Пользователь с таким username уже существует.')
+                {'username': 'Пользователь с таким username уже существует.'})
         return data
 
     def create(self, validated_data):
@@ -177,6 +190,37 @@ class TokenObtainSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         return validated_data
+
+
+class UserSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = [
+            'username', 'email', 'first_name', 'last_name', 'bio', 'role']
+
+    def validate(self, data):
+        if User.objects.filter(username=data['username']).exists():
+            raise serializers.ValidationError(
+                {'username': 'Пользователь с таким username уже существует'}
+            )
+        if User.objects.filter(email=data['email']).exists():
+            raise serializers.ValidationError(
+                {'email': 'Пользователь с таким email уже существует'}
+            )
+        return data
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            password=None,
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', ''),
+            role=validated_data.get('role', 'user'),
+            bio=validated_data.get('bio', '')
+        )
+        return user
 
 
 class ReviewSerializer(serializers.ModelSerializer):

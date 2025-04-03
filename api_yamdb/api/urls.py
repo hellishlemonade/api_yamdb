@@ -9,7 +9,8 @@ from .views import (
     SignUpViewSet,
     TitleViewSet,
     TokenViewSet,
-    )
+    UserAdminViewSet,
+)
 
 VERSION = 'v1'
 
@@ -17,10 +18,10 @@ VERSION = 'v1'
 router = SimpleRouter()
 router.register('titles', TitleViewSet, basename='titles')
 router.register('genres', GenreViewSet, basename='genres')
-
 router.register('categories', CategoryViewSet, basename='categories')
-router.register('auth', SignUpViewSet)
-router.register('token', TokenViewSet)
+router.register('auth/signup', SignUpViewSet)
+router.register('auth/token', TokenViewSet)
+router.register('users', UserAdminViewSet, basename='users')
 router.register(
     r'titles/(?P<title_id>\d+)/reviews',
     ReviewViewSet,

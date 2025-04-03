@@ -1,15 +1,17 @@
-from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.filters import SearchFilter
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
 from reviews.models import Category, Comment, Genre, Review, Title
 from .filters import TitleFilter
 from .mixins import BaseModelMixin, CreateUserModelMixin
-from .permissions import ContentManagePermission, IsAdminOrReadOnly
+from .permissions import (
+    ContentManagePermission, IsAdminOrReadOnly, IsAdminPermission)
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -18,7 +20,8 @@ from .serializers import (
     SignUpSerializer,
     TitleReadSerializer,
     TitleWriteSerializer,
-    TokenObtainSerializer
+    TokenObtainSerializer,
+    UserSerializer
 )
 
 User = get_user_model()
@@ -51,9 +54,10 @@ class TitleViewSet(viewsets.ModelViewSet):
         определенным в TitleFilter (например, по категории, жанру, году)."
     """
     queryset = (Title.objects
-                .annotate(rating=Avg('reviews__score'))
+                # .annotate(rating=Avg('reviews__score'))
+                # после добавления модели Review
+                # будем добавлять средний рейтинг
                 .all())
-    http_method_names = ['get', 'post', 'patch', 'delete',]
     permission_classes = [IsAdminOrReadOnly,]
     filter_backends = [DjangoFilterBackend,]
     filterset_class = TitleFilter
@@ -222,3 +226,39 @@ class CommentViewSet(viewsets.ModelViewSet):
             review=self.get_review(),
             author=self.request.user
         )
+
+
+class UserAdminViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAdminPermission]
+    lookup_field = 'username'
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED,
+            headers=headers
+        )
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance, 
+            data=request.data, 
+            partial=partial
+        )
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        """Эндпоинт для получения текущего пользователя"""
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
