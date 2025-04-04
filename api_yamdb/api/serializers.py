@@ -59,7 +59,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
         """
         Возвращает средний рейтинг произведения.
 
-        Если произведение не имеет отзывов, возвращает None.
+        Если произведение не имеет отзывов, возвращает 0.
         """
         annotated_title = Title.objects.annotate(
             rating=Avg('reviews__score')
@@ -88,7 +88,7 @@ class TitleWriteSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def to_representation(self, title):
-        """Определяет какой сериализатор будет использоваться для чтения."""
+        """Определяет, какой сериализатор будет использоваться для чтения."""
         serializer = TitleReadSerializer(title)
         return serializer.data
 
