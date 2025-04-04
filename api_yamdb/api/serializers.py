@@ -64,7 +64,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
         annotated_title = Title.objects.annotate(
             rating=Avg('reviews__score')
         ).get(pk=obj.pk)
-        return annotated_title.rating or 0
+        return annotated_title.rating or None
 
 
 class TitleWriteSerializer(serializers.ModelSerializer):
