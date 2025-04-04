@@ -5,7 +5,7 @@ from .validators import validate_year
 
 User = get_user_model()
 
-RATING_VALUES = [(i, str(i)) for i in range(11)]
+RATING_VALUES = [(i, str(i)) for i in range(1, 11)]
 
 
 class Title(models.Model):
