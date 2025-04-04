@@ -3,7 +3,7 @@ import secrets
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
-
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django.core.validators import RegexValidator
 from rest_framework.exceptions import APIException, status
@@ -49,11 +49,22 @@ class TitleReadSerializer(serializers.ModelSerializer):
     """
     genre = GenreSerializer(read_only=True, many=True)
     category = CategorySerializer(read_only=True)
-    rating = serializers.IntegerField(read_only=True, required=False)
+    rating = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Title
         fields = '__all__'
+
+    def get_rating(self, obj):
+        """
+        Возвращает средний рейтинг произведения.
+
+        Если произведение не имеет отзывов, возвращает 0.
+        """
+        annotated_title = Title.objects.annotate(
+            rating=Avg('reviews__score')
+        ).get(pk=obj.pk)
+        return annotated_title.rating or None
 
 
 class TitleWriteSerializer(serializers.ModelSerializer):
@@ -75,6 +86,11 @@ class TitleWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Title
         fields = '__all__'
+
+    def to_representation(self, title):
+        """Определяет, какой сериализатор будет использоваться для чтения."""
+        serializer = TitleReadSerializer(title)
+        return serializer.data
 
     def validate(self, attrs):
         """
