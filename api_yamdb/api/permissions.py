@@ -42,7 +42,7 @@ class ContentManagePermission(permissions.BasePermission):
             (request.user.is_authenticated and obj.author == request.user),
             (request.user.is_authenticated and request.user.is_moderator()),
             (request.user.is_authenticated and request.user.is_admin())
-            ])
+        ])
 
 
 class IsAdminPermission(permissions.BasePermission):

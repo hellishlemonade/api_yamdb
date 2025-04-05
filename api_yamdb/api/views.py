@@ -3,7 +3,6 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status, filters
 from rest_framework.filters import SearchFilter
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import MethodNotAllowed
@@ -61,9 +60,9 @@ class TitleViewSet(viewsets.ModelViewSet):
         определенным в TitleFilter (например, по категории, жанру, году)."
     """
     queryset = Title.objects.all()
-    http_method_names = ['get', 'post', 'patch', 'delete',]
-    permission_classes = [IsAdminOrReadOnly,]
-    filter_backends = [DjangoFilterBackend,]
+    http_method_names = ['get', 'post', 'patch', 'delete', ]
+    permission_classes = [IsAdminOrReadOnly, ]
+    filter_backends = [DjangoFilterBackend, ]
     filterset_class = TitleFilter
 
     def get_serializer_class(self):
@@ -116,9 +115,9 @@ class GenreViewSet(BaseModelMixin):
     """
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    permission_classes = [IsAdminOrReadOnly,]
-    filter_backends = [SearchFilter,]
-    search_fields = ['name',]
+    permission_classes = [IsAdminOrReadOnly, ]
+    filter_backends = [SearchFilter, ]
+    search_fields = ['name', ]
     lookup_field = 'slug'
 
 
@@ -160,9 +159,9 @@ class CategoryViewSet(BaseModelMixin):
     """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [IsAdminOrReadOnly,]
-    filter_backends = [SearchFilter,]
-    search_fields = ['name',]
+    permission_classes = [IsAdminOrReadOnly, ]
+    filter_backends = [SearchFilter, ]
+    search_fields = ['name', ]
     lookup_field = 'slug'
 
 
