@@ -27,6 +27,7 @@ from .serializers import (
     TitleWriteSerializer,
     TokenObtainSerializer,
     UserSerializer,
+    UserUpdateSerializer,
     MeSerializer
 )
 
@@ -265,6 +266,8 @@ class UserAdminViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'me':
             return MeSerializer
+        if self.request.method == 'PATCH':
+            return UserUpdateSerializer
         return UserSerializer
 
     def update(self, request, *args, **kwargs):

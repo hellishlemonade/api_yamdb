@@ -6,17 +6,23 @@ from django.core.mail import send_mail
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django.core.validators import RegexValidator
-from rest_framework.exceptions import APIException, status
-from rest_framework import serializers, validators
+from rest_framework.exceptions import status
+from rest_framework import serializers
 from rest_framework.exceptions import NotFound, status
 from rest_framework_simplejwt.tokens import AccessToken
 
 from api_yamdb.settings import DEFAULT_FROM_EMAIL
 from reviews.models import (
     Category, Comment, Genre, RATING_VALUES, Review, Title)
+from .validators import validate_username_me
 
 
 User = get_user_model()
+
+
+ERROR_USERNAME = 'Пользователь с таким username уже существует.'
+ERROR_EMAIL = 'Пользователь с таким email уже существует.'
+ERROR_REQUIRED_VALUE = 'Отсутствует обязательное поле.'
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -110,7 +116,6 @@ class SignUpSerializer(serializers.ModelSerializer):
     Сериализатор для создания нового пользователя
     и отправки кода подтверждения.
     """
-
     class Meta:
         model = User
         fields = ['email', 'username']
@@ -130,10 +135,7 @@ class SignUpSerializer(serializers.ModelSerializer):
         Метод проверяющий поле "username" на соответствие условию
         создания юзернеймов.
         """
-        if value.lower() == 'me':
-            raise serializers.ValidationError(
-                'Использование имени "me" под запретом.')
-        return value
+        return validate_username_me(value)
 
     def validate(self, data):
         """
@@ -150,12 +152,12 @@ class SignUpSerializer(serializers.ModelSerializer):
             if user.username != username:
                 raise ValidationError(
                     {'email':
-                     'Такой email уже используется другим пользователем.'})
+                     ERROR_EMAIL})
             else:
                 return data
         if username_exists:
             raise ValidationError(
-                {'username': 'Пользователь с таким username уже существует.'})
+                {'username': ERROR_USERNAME})
         return data
 
     def create(self, validated_data):
@@ -198,7 +200,7 @@ class TokenObtainSerializer(serializers.Serializer):
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             raise NotFound(
-                detail='Пользователь с таким "username" не существует.',
+                detail=ERROR_USERNAME,
                 code=status.HTTP_404_NOT_FOUND)
         if user.confirmation_code != confirmation_code:
             raise serializers.ValidationError(
@@ -222,22 +224,38 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'username', 'email', 'first_name', 'last_name', 'bio', 'role']
         extra_kwargs = {
+            'email': {
+                'required': False
+            },
             'username': {
-                'required': True,
+                'required': False,
                 'validators': [RegexValidator(r'^[\w.@+-]+\Z')]
             }
         }
 
+    def validate_username(self, value):
+        """
+        Метод проверяющий поле "username" на соответствие условию
+        создания юзернеймов.
+        """
+        return validate_username_me(value)
+
     def validate(self, data):
         if 'username' not in data:
-            return data
+            raise ValidationError(
+                {'username': ERROR_REQUIRED_VALUE}
+            )
+        if 'email' not in data:
+            raise ValidationError(
+                {'email': ERROR_REQUIRED_VALUE}
+            )
         if User.objects.filter(username=data['username']).exists():
             raise serializers.ValidationError(
-                {'username': 'Пользователь с таким username уже существует'}
+                {'username': ERROR_USERNAME}
             )
         if User.objects.filter(email=data['email']).exists():
             raise serializers.ValidationError(
-                {'email': 'Пользователь с таким email уже существует'}
+                {'email': ERROR_EMAIL}
             )
         return data
 
@@ -254,6 +272,33 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
+class UserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'username', 'email', 'first_name', 'last_name', 'bio', 'role']
+
+    def validate_username(self, value):
+        """
+        Метод проверяющий поле "username" на соответствие условию
+        создания юзернеймов.
+        """
+        return validate_username_me(value)
+
+    def validate(self, attrs):
+        if 'username' in attrs:
+            if User.objects.filter(username=attrs['username']).exists():
+                raise serializers.ValidationError(
+                    {'username': ERROR_USERNAME}
+                )
+        if 'email' in attrs:
+            if User.objects.filter(email=attrs['email']).exists():
+                raise serializers.ValidationError(
+                    {'email': ERROR_EMAIL}
+                )
+        return attrs
+
+
 class MeSerializer(serializers.ModelSerializer):
     """
     Сериализатор для выполнения операций получения экземпляра
@@ -261,7 +306,8 @@ class MeSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'bio', 'role']
+        fields = [
+            'username', 'email', 'first_name', 'last_name', 'bio', 'role']
         read_only_fields = ['role']
         extra_kwargs = {
             'username': {
@@ -269,6 +315,26 @@ class MeSerializer(serializers.ModelSerializer):
                 'validators': [RegexValidator(r'^[\w.@+-]+\Z')]
             }
         }
+
+    def validate_username(self, value):
+        """
+        Метод проверяющий поле "username" на соответствие условию
+        создания юзернеймов.
+        """
+        return validate_username_me(value)
+
+    def validate(self, data):
+        if 'username' not in data:
+            return data
+        if User.objects.filter(username=data['username']).exists():
+            raise serializers.ValidationError(
+                {'username': ERROR_USERNAME}
+            )
+        if User.objects.filter(email=data['email']).exists():
+            raise serializers.ValidationError(
+                {'email': ERROR_EMAIL}
+            )
+        return data
 
 
 class ReviewSerializer(serializers.ModelSerializer):
