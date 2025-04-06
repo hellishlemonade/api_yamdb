@@ -108,7 +108,8 @@ class CustomUser(AbstractUser):
 
     def is_admin(self):
         """Проверяет, является ли пользователь администратором."""
-        return self.role == self.ADMIN
+        return (self.role == self.ADMIN
+                or self.is_superuser)  # пока сделал так, меняйте, если что
 
     def __str__(self):
         # По такому строковому представлению не понятно к какому объекту оно принадлежит.

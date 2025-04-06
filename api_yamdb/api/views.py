@@ -1,5 +1,6 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import get_user_model
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status, filters
 from rest_framework.filters import SearchFilter
@@ -9,7 +10,7 @@ from rest_framework.exceptions import MethodNotAllowed
 
 from reviews.models import Category, Comment, Genre, Review, Title
 from .filters import TitleFilter
-from .mixins import BaseModelMixin, CreateUserModelMixin
+from .mixins import CreateListDestroyModelMixin, CreateUserModelMixin
 from .permissions import (
     ContentManagePermission,
     IsAdminOrReadOnly,
@@ -59,8 +60,10 @@ class TitleViewSet(viewsets.ModelViewSet):
         возможность фильтрации произведений по различным полям,
         определенным в TitleFilter (например, по категории, жанру, году)."
     """
-    queryset = Title.objects.all()
-    # Рассчитываем рейтинг сразу при запросе в queryset используя annotate и функцию Avg.
+    queryset = (Title.objects
+                .annotate(rating=Avg('reviews__score'))
+                .all()
+                )
     http_method_names = ['get', 'post', 'patch', 'delete', ]
     permission_classes = [IsAdminOrReadOnly, ]
     filter_backends = [DjangoFilterBackend, ]
@@ -80,7 +83,7 @@ class TitleViewSet(viewsets.ModelViewSet):
         return TitleWriteSerializer
 
 
-class GenreViewSet(BaseModelMixin):
+class GenreViewSet(CreateListDestroyModelMixin):
     """
     ViewSet для модели Genre.
 
@@ -109,7 +112,7 @@ class GenreViewSet(BaseModelMixin):
     lookup_field:
         Поле, используемое для поиска жанра в URL : 'slug'.
 
-    Действия, предоставляемые ViewSet'ом (унаследованы от BaseModelMixin):
+    Действия, предоставляемые ViewSet'ом (унаследованы от CreateListDestroyModelMixin):
     - create (POST): Создание нового жанра.
     - list (GET): Получение списка жанров с возможностью фильтрации по имени.
     - destroy (DELETE): Удаление жанра по слагу (lookup_field = 'slug').
@@ -122,7 +125,7 @@ class GenreViewSet(BaseModelMixin):
     lookup_field = 'slug'
 
 
-class CategoryViewSet(BaseModelMixin):
+class CategoryViewSet(CreateListDestroyModelMixin):
     """
     ViewSet для модели Category.
 
