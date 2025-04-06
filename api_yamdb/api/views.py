@@ -3,7 +3,6 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status, filters
 from rest_framework.filters import SearchFilter
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import MethodNotAllowed
@@ -210,7 +209,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
     """
     ViewSet для модели Review.
     """
-    queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     permission_classes = (ContentManagePermission,)
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
@@ -232,7 +230,6 @@ class CommentViewSet(viewsets.ModelViewSet):
     """
     ViewSet для модели Comment.
     """
-    queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = (ContentManagePermission,)
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']

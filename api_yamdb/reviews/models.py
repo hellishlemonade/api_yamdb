@@ -1,11 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 from .validators import validate_year
 
 User = get_user_model()
-
-RATING_VALUES = [(i, str(i)) for i in range(1, 11)]
 
 
 class Title(models.Model):
@@ -183,7 +182,12 @@ class Review(models.Model):
     Модель для представления отзывов на произведения.
     """
     text = models.TextField()
-    score = models.IntegerField(choices=RATING_VALUES)
+    score = models.SmallIntegerField(
+        validators=[
+            MinValueValidator(1, "Оценка на может быть меньше 1"),
+            MaxValueValidator(10, "Оценка на может быть больше 10")
+        ]
+        )
     pub_date = models.DateTimeField(
         'Дата публикации', auto_now_add=True, db_index=True
     )
@@ -194,15 +198,17 @@ class Review(models.Model):
         Title, on_delete=models.CASCADE, related_name='reviews'
     )
 
-    def __str__(self):
-        return self.text[:15]
-
     class Meta:
+        verbose_name = 'Отзыв'
+        verbose_name_plural = 'Отзывы'
         ordering = ('pub_date', 'title')
         constraints = [
             models.UniqueConstraint(
                 fields=['author', 'title'], name='unique_review'),
         ]
+
+    def __str__(self):
+        return f"{self.id} отзыв на произведение {self.title.name}."
 
 
 class Comment(models.Model):
@@ -220,8 +226,10 @@ class Comment(models.Model):
         'Дата публикации', auto_now_add=True, db_index=True
     )
 
-    def __str__(self):
-        return self.text[:15]
-
     class Meta:
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
         ordering = ('pub_date', 'review')
+
+    def __str__(self):
+        return f"Комментарий №{self.id} к отзыву на {self.title.name}."

@@ -37,12 +37,14 @@ class ContentManagePermission(permissions.BasePermission):
                 or request.user.is_authenticated)
 
     def has_object_permission(self, request, view, obj):
-        return any([
-            request.method in permissions.SAFE_METHODS,
-            (request.user.is_authenticated and obj.author == request.user),
-            (request.user.is_authenticated and request.user.is_moderator()),
-            (request.user.is_authenticated and request.user.is_admin())
-            ])
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if request.user.is_authenticated:
+            return (
+                obj.author == request.user
+                or request.user.is_moderator()
+                or request.user.is_admin()
+                )
 
 
 class IsAdminPermission(permissions.BasePermission):
