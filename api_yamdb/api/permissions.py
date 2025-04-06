@@ -54,7 +54,7 @@ class ContentManagePermission(permissions.BasePermission):
 class IsAdminPermission(permissions.BasePermission):
     """
     Пермишен, дающий право доступа к эндпоинту только пользователю
-    со статусом admin
+    со статусом admin.
     """
     def has_permission(self, request, view):
         return (
