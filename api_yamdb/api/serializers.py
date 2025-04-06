@@ -59,9 +59,6 @@ class TitleReadSerializer(serializers.ModelSerializer):
     genre = GenreSerializer(read_only=True, many=True)
     category = CategorySerializer(read_only=True)
     rating = serializers.IntegerField(read_only=True, default=None)
-    # Тут хватит IntegerField,
-    # в котором надо будет указать
-    # параметр default (дефолтом будет None).
 
     class Meta:
         model = Title
@@ -71,19 +68,6 @@ class TitleReadSerializer(serializers.ModelSerializer):
         # уже не будет соответствовать спецификации.
         # Описываем явно поля.
         # Тут и далее.
-
-    '''def get_rating(self, obj):
-        # Такой подход породит множество запросов в БД (отдельный запрос для каждого элемента QuerySet).
-        # Нужно изменить подход: добавьте атрибут rating для всех элементов QuerySet путем его аннотирования во вью.
-        """
-        Возвращает средний рейтинг произведения.
-
-        Если произведение не имеет отзывов, возвращает 0.
-        """
-        annotated_title = Title.objects.annotate(
-            rating=Avg('reviews__score')
-        ).get(pk=obj.pk)
-        return annotated_title.rating or None'''
 
 
 class TitleWriteSerializer(serializers.ModelSerializer):
@@ -112,20 +96,6 @@ class TitleWriteSerializer(serializers.ModelSerializer):
     def to_representation(self, title):
         """Определяет, какой сериализатор будет использоваться для чтения."""
         return TitleReadSerializer(title).data
-
-    '''def validate(self, attrs):
-        # Да, нельзя создавать произведение если у жанра указан пустой список.
-        # Но метод лишний, смотрим в сторону атрибутов allow_null и allow_empty.
-        """
-        Проверяет корректность данных перед сохранением.
-
-        Проверяет наличие категории и жанра, если они предоставлены.
-        """
-        if 'category' in attrs and not attrs.get('category'):
-            raise ValidationError('Необходимо указать категорию.')
-        if 'genre' in attrs and not attrs.get('genre'):
-            raise ValidationError('Необходимо указать хотя бы 1 жанр.')
-        return attrs'''
 
 
 class SignUpSerializer(serializers.ModelSerializer): 
