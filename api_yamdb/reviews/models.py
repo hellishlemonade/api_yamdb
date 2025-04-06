@@ -7,6 +7,12 @@ User = get_user_model()
 
 RATING_VALUES = [(i, str(i)) for i in range(1, 11)]
 
+# Общий комментарий
+# Проверить и добавить для всех моделей:
+# verbose-поля также нужно настроить у всех моделей (verbose_name и verbose_name_plural)
+# ordering также должно быть в каждой модели
+# строковое представление __str__
+
 
 class Title(models.Model):
     """
@@ -43,10 +49,13 @@ class Title(models.Model):
     name = models.CharField(
         verbose_name='Название',
         max_length=256,
+        # Для всех дублирующихся размеров текстовых полей в моделях и сериализаторах нужно завести константы в settings.py.
+        # Тут и далее все значения ограничений берем из констант.
         help_text='Название произведения',
         db_index=True,  # поиск по имени произведения - частая операция
     )
     year = models.IntegerField(
+        # SmallIntegerField
         verbose_name='Год создания',
         help_text='Год создания произведения',
         validators=[validate_year]
@@ -59,6 +68,8 @@ class Title(models.Model):
     genre = models.ManyToManyField(
         'Genre',
         through='Title_genre',
+        # Точно такую же модель для m2m поля Джанго создаст самостоятельно. 
+        # Лишнее.
         verbose_name='Жанр',
         help_text='Жанр произведения',
         related_name='titles',
@@ -77,6 +88,9 @@ class Title(models.Model):
         verbose_name_plural = 'Произведения'
 
     def __str__(self):
+        # По такому строковому представлению не понятно к какому объекту оно принадлежит.
+        # Строковое представление делаем более содержательным.
+        # Тут и далее по всем моделям.
         return self.name
 
 
@@ -117,6 +131,9 @@ class Genre(models.Model):
 
 
 class Title_genre(models.Model):
+    # На будущее:
+    # Классы мы пишем в стиле CamelCase.
+    # Можешь посмотреть в гайдлайне нотацию для остальных типов.
     """
     Модель для представления связи между жанрами и произведениями.
 
@@ -184,6 +201,11 @@ class Review(models.Model):
     """
     text = models.TextField()
     score = models.IntegerField(choices=RATING_VALUES)
+    # SmallIntegerField
+    # choices лишний.
+    # Нужно учесть что значение у нас не меньше 1 и не более 10.
+    # Настраиваем валидацию через атрибут validators и используем готовые валидаторы MinValueValidator и MaxValueValidator.
+    # Параметром message, в каждом классе валидации, можно указать сообщение с причиной данной ошибки.
     pub_date = models.DateTimeField(
         'Дата публикации', auto_now_add=True, db_index=True
     )
@@ -198,6 +220,15 @@ class Review(models.Model):
         return self.text[:15]
 
     class Meta:
+        # Модель нужно привести в порядок, согласно код-стайлу джанго.
+        # -   All database fields
+        # -   Custom manager attributes
+        # -   class Meta
+        # -   def __str__()
+        # -   def save()
+        # -   def get_absolute_url()
+        # -   Any custom methods
+        # Внимание на очередность.
         ordering = ('pub_date', 'title')
         constraints = [
             models.UniqueConstraint(
@@ -224,4 +255,5 @@ class Comment(models.Model):
         return self.text[:15]
 
     class Meta:
+        # См.  222.
         ordering = ('pub_date', 'review')

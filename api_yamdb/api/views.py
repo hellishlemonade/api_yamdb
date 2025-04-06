@@ -60,6 +60,7 @@ class TitleViewSet(viewsets.ModelViewSet):
         определенным в TitleFilter (например, по категории, жанру, году)."
     """
     queryset = Title.objects.all()
+    # Рассчитываем рейтинг сразу при запросе в queryset используя annotate и функцию Avg.
     http_method_names = ['get', 'post', 'patch', 'delete', ]
     permission_classes = [IsAdminOrReadOnly, ]
     filter_backends = [DjangoFilterBackend, ]
@@ -166,6 +167,12 @@ class CategoryViewSet(BaseModelMixin):
 
 
 class SignUpViewSet(CreateUserModelMixin):
+    # Не вижу смысла использовать вьюсет для создания и тут же переопределять его.
+    # Для эндпоинов auth/ проще использовать декораторы @api_view и @permission_classes из rest_framework.decorators.
+    # Логика в этом методе следующая:
+    # -- Для валидации полей используем соответствующий инструмент - сериализатор. В нем все ограничения и метод с валидацией. Проверяем валидацию - .is_valid().
+    # -- Когда все проверили надо решить создавать юзера или получать - get_or_create.
+    # -- Полученному юзеру отправляем письмо.
     """
     ViewSet для модели CustomUser.
 
@@ -186,6 +193,7 @@ class SignUpViewSet(CreateUserModelMixin):
 
 
 class TokenViewSet(CreateUserModelMixin):
+    # См. 169 п.1.
     """
     ViewSet для модели CustomUser.
 
@@ -210,6 +218,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     ViewSet для модели Review.
     """
     queryset = Review.objects.all()
+    # Если описан метод, то атрибут лишний.
     serializer_class = ReviewSerializer
     permission_classes = (ContentManagePermission,)
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
@@ -232,6 +241,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     ViewSet для модели Comment.
     """
     queryset = Comment.objects.all()
+    # См. 220.
     serializer_class = CommentSerializer
     permission_classes = (ContentManagePermission,)
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
@@ -270,6 +280,7 @@ class UserAdminViewSet(viewsets.ModelViewSet):
         return UserSerializer
 
     def update(self, request, *args, **kwargs):
+        # Ограничиваем методы с помощью атрибута http_method_names.
         """Блокировка PUT запросов"""
         if request.method == 'PUT':
             raise MethodNotAllowed('PUT')

@@ -17,6 +17,9 @@ AUTH = 'auth'
 
 
 router = SimpleRouter()
+# Имя роутера должно содержать номер версии нашей API.
+# Так избавимся от путаницы при появлении новых версий.
+# Добавь префикс с номером версии к имени переменной.
 router.register('titles', TitleViewSet, basename='titles')
 router.register('genres', GenreViewSet, basename='genres')
 router.register('categories', CategoryViewSet, basename='categories')

@@ -33,7 +33,11 @@ class CategorySerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Category
-        exclude = ['id', ]
+        exclude = ['id', ] 
+        # Когда объявляется коллекция, нужно верно выбрать между списком и кортежем(тут список).
+        # Выбор нужно делать осознанно, потому что список изменяемый, а кортеж нет.
+        # Если предполагается, что сюда будет вноситься изменения где то в коде, то нужен список, а если изменений никаких не будет то лучше кортеж.
+        # Тут и далее по всему коду.
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -55,13 +59,22 @@ class TitleReadSerializer(serializers.ModelSerializer):
     """
     genre = GenreSerializer(read_only=True, many=True)
     category = CategorySerializer(read_only=True)
-    rating = serializers.SerializerMethodField(read_only=True)
+    rating = serializers.SerializerMethodField(read_only=True) 
+    # Тут хватит IntegerField,
+    # в котором надо будет указать
+    # параметр default (дефолтом будет None).
 
     class Meta:
         model = Title
-        fields = '__all__'
+        fields = '__all__' 
+        # Модель может измениться, а с такой настройкой наш АПИ
+        # уже не будет соответствовать спецификации.
+        # Описываем явно поля.
+        # Тут и далее.
 
-    def get_rating(self, obj):
+    def get_rating(self, obj): 
+        # Такой подход породит множество запросов в БД (отдельный запрос для каждого элемента QuerySet).
+        # Нужно изменить подход: добавьте атрибут rating для всех элементов QuerySet путем его аннотирования во вью.
         """
         Возвращает средний рейтинг произведения.
 
@@ -95,10 +108,13 @@ class TitleWriteSerializer(serializers.ModelSerializer):
 
     def to_representation(self, title):
         """Определяет, какой сериализатор будет использоваться для чтения."""
-        serializer = TitleReadSerializer(title)
+        serializer = TitleReadSerializer(title) 
+        # Одноразовая переменная.
         return serializer.data
 
-    def validate(self, attrs):
+    def validate(self, attrs): 
+        # Да, нельзя создавать произведение если у жанра указан пустой список.
+        # Но метод лишний, смотрим в сторону атрибутов allow_null и allow_empty.
         """
         Проверяет корректность данных перед сохранением.
 
@@ -111,7 +127,12 @@ class TitleWriteSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class SignUpSerializer(serializers.ModelSerializer):
+class SignUpSerializer(serializers.ModelSerializer): 
+    # Этот сериализатор нам нужен будет только для валидации, создавать юзера через него не нужно. Письма отправляются во вью. Наследуемся от обычного serializers.Serializer.
+    # Нужно описать каждое поле явно указав все требуемые ограничения - длину строк и валидаторы (атрибут validators).
+    # -- Для валидации символов есть готовый валидатор UnicodeUsernameValidator() из django.contrib.auth.validators.
+    # -- Не забыть про валидатор для ника me
+    # Валидацию для комбинации ника и почты описываем в методе validate.
     """
     Сериализатор для создания нового пользователя
     и отправки кода подтверждения.
@@ -170,7 +191,11 @@ class SignUpSerializer(serializers.ModelSerializer):
             email=email,
             defaults={
                 'username': username,
-                'confirmation_code': secrets.token_urlsafe(16)
+                'confirmation_code': secrets.token_urlsafe(16)  
+                # Общий комментарий по проверочному коду:
+                # Способ создания и проверки кода неплохой, но есть еще более подходящий стандартный default_token_generator, в котором даже хранить confirmatiom_code не нужно.
+                # Для создания кода используй default_token_generator.make_token из from django.contrib.auth.tokens import default_token_generator прокидывая в него объект юзера.
+                # Для проверки токена используй функцию default_token_generator.check_token прокидывая в неё юзера и проверочный код.
             }
         )
         if not created:
@@ -190,13 +215,16 @@ class TokenObtainSerializer(serializers.Serializer):
     """
     Сериализатор для создания или обновления токена.
     """
-    username = serializers.CharField(max_length=150, required=True)
+    username = serializers.CharField(max_length=150, required=True) 
+    # Постоянные величины ограничений берем из констант.
+    # Добавить валидаторы. См. 130 п.2.
     confirmation_code = serializers.CharField(max_length=100, required=True)
 
     def validate(self, attrs):
         username = attrs.get('username')
         confirmation_code = attrs.get('confirmation_code')
-        try:
+        try: 
+            # get_object_or_404
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             raise NotFound(
@@ -205,13 +233,19 @@ class TokenObtainSerializer(serializers.Serializer):
         if user.confirmation_code != confirmation_code:
             raise serializers.ValidationError(
                 {'confirmation_code': 'Неверный код подверждения.'})
-        attrs['token'] = str(AccessToken.for_user(user))
+        attrs['token'] = str(AccessToken.for_user(user)) 
+        # Сериализатор только проверяет поля. Всю логику представления описываем во вью.
+        # У сериализатора только 2 поля и подмешивать другие в методы которые за это не отвечают не лучшая идея.
+        # Варианта 2 на выбор:
+        # Либо проверку кода вынести во вью
+        # Либо во вью нужно будет второй раз сходить за юзером чтобы отдать токен
         return attrs
 
-    def to_representation(self, instance):
+    def to_representation(self, instance): # Лишний метод.
         return {'token': instance['token']}
 
-    def create(self, validated_data):
+    def create(self, validated_data): 
+        # Это не модельный сериализатор. Созданием не занимаемся.
         return validated_data
 
 
@@ -223,7 +257,10 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'username', 'email', 'first_name', 'last_name', 'bio', 'role']
-        extra_kwargs = {
+        extra_kwargs = { 
+            # Лишняя настройка. 
+            # Так как это модельный сериализатор, то все настройки полей (включая валидацию) он подтянет из модели автоматически.
+            # Описывать поля/настройки/валидаторы нет необходимости если мы ничего не меняем.
             'email': {
                 'required': False
             },
@@ -233,7 +270,8 @@ class UserSerializer(serializers.ModelSerializer):
             }
         }
 
-    def validate_username(self, value):
+    def validate_username(self, value): 
+        # Все методы сериализатора лишние по той же причине
         """
         Метод проверяющий поле "username" на соответствие условию
         создания юзернеймов.
@@ -272,7 +310,8 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
-class UserUpdateSerializer(serializers.ModelSerializer):
+class UserUpdateSerializer(serializers.ModelSerializer): 
+    # Лишний сериализатор. В нем та же самая логика что и в сериализаторе выше.
     class Meta:
         model = User
         fields = [
@@ -299,7 +338,8 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class MeSerializer(serializers.ModelSerializer):
+class MeSerializer(serializers.ModelSerializer): 
+    # Лишнее.
     """
     Сериализатор для выполнения операций получения экземпляра
     и внесения изменений в собственный профиль.
@@ -316,7 +356,8 @@ class MeSerializer(serializers.ModelSerializer):
             }
         }
 
-    def validate_username(self, value):
+    def validate_username(self, value): 
+        # Этот и следующий метод лишние.
         """
         Метод проверяющий поле "username" на соответствие условию
         создания юзернеймов.
@@ -358,7 +399,8 @@ class ReviewSerializer(serializers.ModelSerializer):
         request = self.context['view'].request
         author = request.user
         if request.method == 'POST':
-            if Review.objects.filter(author=author, title=title).exists():
+            if Review.objects.filter(author=author, title=title).exists(): 
+                # Фильтруй сразу по ключу tite_id. Лишний запрос на 397 строке убираем.
                 raise ValidationError('Такой отзыв уже есть.')
         return super().validate(attrs)
 
