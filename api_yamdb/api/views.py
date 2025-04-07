@@ -116,7 +116,8 @@ class GenreViewSet(CreateListDestroyModelMixin):
     lookup_field:
         Поле, используемое для поиска жанра в URL : 'slug'.
 
-    Действия, предоставляемые ViewSet'ом (унаследованы от CreateListDestroyModelMixin):
+    Действия, предоставляемые ViewSet'ом (унаследованы от
+    CreateListDestroyModelMixin):
     - create (POST): Создание нового жанра.
     - list (GET): Получение списка жанров с возможностью фильтрации по имени.
     - destroy (DELETE): Удаление жанра по слагу (lookup_field = 'slug').
@@ -248,6 +249,21 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Comment.objects.filter(review=self.get_review())
+
+    def get_object(self):
+        review_id = self.kwargs['review_id']
+        if (
+            not Review.objects.filter(
+                id=review_id,
+                title__id=self.kwargs['title_id']
+            ).exists()
+            or not Comment.objects.filter(
+                id=self.kwargs['pk'],
+                review__id=review_id
+            ).exists()
+        ):
+            raise NotFound()
+        return super().get_object()
 
     def perform_create(self, serializer):
         serializer.save(

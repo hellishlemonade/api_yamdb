@@ -1,9 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.exceptions import ValidationError
-from django.db.models import Avg
-from django.shortcuts import get_object_or_404
-from rest_framework.exceptions import status
+from rest_framework.exceptions import NotFound
 from rest_framework import serializers
 
 from api_yamdb.settings import MAX_EMAIL_LENGTH
@@ -31,10 +29,6 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         exclude = ('id',)
-        # Когда объявляется коллекция, нужно верно выбрать между списком и кортежем(тут список).
-        # Выбор нужно делать осознанно, потому что список изменяемый, а кортеж нет.
-        # Если предполагается, что сюда будет вноситься изменения где то в коде, то нужен список, а если изменений никаких не будет то лучше кортеж.
-        # Тут и далее по всему коду.
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -62,10 +56,6 @@ class TitleReadSerializer(serializers.ModelSerializer):
         model = Title
         fields = ('id', 'name', 'year', 'description',
                   'genre', 'category', 'rating')
-        # Модель может измениться, а с такой настройкой наш АПИ
-        # уже не будет соответствовать спецификации.
-        # Описываем явно поля.
-        # Тут и далее.
 
 
 class TitleWriteSerializer(serializers.ModelSerializer):
@@ -93,7 +83,7 @@ class TitleWriteSerializer(serializers.ModelSerializer):
 
     def to_representation(self, title):
         """Определяет, какой сериализатор будет использоваться для чтения."""
-        
+
         return TitleReadSerializer(title).data
 
 
@@ -184,7 +174,7 @@ class ReviewSerializer(serializers.ModelSerializer):
             if Review.objects.filter(
                 author=author,
                 title__id=self.context['view'].kwargs.get('title_id')
-                    ).exists():
+            ).exists():
                 raise ValidationError('Такой отзыв уже есть.')
         return super().validate(attrs)
 
@@ -202,3 +192,11 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ('id', 'text', 'author', 'pub_date')
         read_only_fields = ('review',)
+
+    def validate(self, attrs):
+        if not Review.objects.filter(
+            id=self.context['view'].kwargs.get('review_id'),
+            title__id=self.context['view'].kwargs.get('title_id')
+        ).exists():
+            raise NotFound()
+        return super().validate(attrs)
