@@ -43,8 +43,6 @@ class Title(models.Model):
     name = models.CharField(
         verbose_name='Название',
         max_length=DEFAULT_NAME_LENGTH,
-        # Для всех дублирующихся размеров текстовых полей в моделях и сериализаторах нужно завести константы в settings.py.
-        # Тут и далее все значения ограничений берем из констант.
         help_text='Название произведения',
         db_index=True,  # поиск по имени произведения - частая операция
     )
@@ -79,9 +77,6 @@ class Title(models.Model):
         ordering = ('name',)
 
     def __str__(self):
-        # По такому строковому представлению не понятно к какому объекту оно принадлежит.
-        # Строковое представление делаем более содержательным.
-        # Тут и далее по всем моделям.
         return f'{self.category} {self.name}'
 
 
@@ -169,7 +164,7 @@ class Review(models.Model):
             MinValueValidator(1, "Оценка на может быть меньше 1"),
             MaxValueValidator(10, "Оценка на может быть больше 10")
         ]
-        )
+    )
     pub_date = models.DateTimeField(
         'Дата публикации', auto_now_add=True, db_index=True
     )
