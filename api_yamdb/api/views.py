@@ -220,8 +220,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
     """
     ViewSet для модели Review.
     """
-    queryset = Review.objects.all()
-    # Если описан метод, то атрибут лишний.
     serializer_class = ReviewSerializer
     permission_classes = (ContentManagePermission,)
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
@@ -243,8 +241,6 @@ class CommentViewSet(viewsets.ModelViewSet):
     """
     ViewSet для модели Comment.
     """
-    queryset = Comment.objects.all()
-    # См. 220.
     serializer_class = CommentSerializer
     permission_classes = (ContentManagePermission,)
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']

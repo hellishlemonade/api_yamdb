@@ -1,18 +1,11 @@
 from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 from api_yamdb.settings import DEFAULT_NAME_LENGTH, DEFAULT_SLUG_LENGTH
 from .validators import validate_year
 
 User = get_user_model()
-
-RATING_VALUES = [(i, str(i)) for i in range(1, 11)]
-
-# Общий комментарий
-# Проверить и добавить для всех моделей:
-# verbose-поля также нужно настроить у всех моделей (verbose_name и verbose_name_plural)
-# ordering также должно быть в каждой модели
-# строковое представление __str__
 
 
 class Title(models.Model):
@@ -171,12 +164,12 @@ class Review(models.Model):
     Модель для представления отзывов на произведения.
     """
     text = models.TextField()
-    score = models.IntegerField(choices=RATING_VALUES)
-    # SmallIntegerField
-    # choices лишний.
-    # Нужно учесть что значение у нас не меньше 1 и не более 10.
-    # Настраиваем валидацию через атрибут validators и используем готовые валидаторы MinValueValidator и MaxValueValidator.
-    # Параметром message, в каждом классе валидации, можно указать сообщение с причиной данной ошибки.
+    score = models.SmallIntegerField(
+        validators=[
+            MinValueValidator(1, "Оценка на может быть меньше 1"),
+            MaxValueValidator(10, "Оценка на может быть больше 10")
+        ]
+        )
     pub_date = models.DateTimeField(
         'Дата публикации', auto_now_add=True, db_index=True
     )
@@ -187,24 +180,17 @@ class Review(models.Model):
         Title, on_delete=models.CASCADE, related_name='reviews'
     )
 
-    def __str__(self):
-        return self.text[:15]
-
     class Meta:
-        # Модель нужно привести в порядок, согласно код-стайлу джанго.
-        # -   All database fields
-        # -   Custom manager attributes
-        # -   class Meta
-        # -   def __str__()
-        # -   def save()
-        # -   def get_absolute_url()
-        # -   Any custom methods
-        # Внимание на очередность.
+        verbose_name = 'Отзыв'
+        verbose_name_plural = 'Отзывы'
         ordering = ('pub_date', 'title')
         constraints = [
             models.UniqueConstraint(
                 fields=['author', 'title'], name='unique_review'),
         ]
+
+    def __str__(self):
+        return f"{self.id} отзыв на произведение {self.title.name}."
 
 
 class Comment(models.Model):
@@ -222,9 +208,10 @@ class Comment(models.Model):
         'Дата публикации', auto_now_add=True, db_index=True
     )
 
-    def __str__(self):
-        return self.text[:15]
-
     class Meta:
-        # См.  222.
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
         ordering = ('pub_date', 'review')
+
+    def __str__(self):
+        return f"Комментарий №{self.id} к отзыву на {self.title.name}."

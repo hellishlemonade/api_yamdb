@@ -3,16 +3,15 @@ import secrets
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
-from django.shortcuts import get_object_or_404
+from django.db.models import Avg
 from django.core.validators import RegexValidator
-from rest_framework.exceptions import status
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound, status
 from rest_framework_simplejwt.tokens import AccessToken
 
 from api_yamdb.settings import DEFAULT_FROM_EMAIL
 from reviews.models import (
-    Category, Comment, Genre, RATING_VALUES, Review, Title)
+    Category, Comment, Genre, Review, Title)
 from .validators import validate_username_me
 
 
@@ -22,6 +21,7 @@ User = get_user_model()
 ERROR_USERNAME = 'Пользователь с таким username уже существует.'
 ERROR_EMAIL = 'Пользователь с таким email уже существует.'
 ERROR_REQUIRED_VALUE = 'Отсутствует обязательное поле.'
+RATING_VALUES = [(i, str(i)) for i in range(1, 11)]
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -365,13 +365,13 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ('title',)
 
     def validate(self, attrs):
-        title = get_object_or_404(
-            Title, id=self.context['view'].kwargs.get('title_id'))
         request = self.context['view'].request
         author = request.user
         if request.method == 'POST':
-            if Review.objects.filter(author=author, title=title).exists(): 
-                # Фильтруй сразу по ключу tite_id. Лишний запрос на 397 строке убираем.
+            if Review.objects.filter(
+                author=author,
+                title__id=self.context['view'].kwargs.get('title_id')
+                    ).exists():
                 raise ValidationError('Такой отзыв уже есть.')
         return super().validate(attrs)
 
