@@ -30,17 +30,3 @@ class CreateListDestroyModelMixin(CreateModelMixin, ListModelMixin,
     - destroy (DELETE): Удаление объекта по идентификатору (lookup_field).
     """
     pass
-
-
-class CreateUserModelMixin(CreateModelMixin, GenericViewSet):
-    """
-    Миксин для создания ViewSet'ов, выполняющих POST запросы.
-
-    Наследует функциональность для создания новых объектов (CreateModelMixin),
-    В сочетании с GenericViewSet, предоставляет создвние объекта для модели.
-
-    Примеры использования:
-    - ViewSet для создания пользователя.
-    - ViewSet для создания токена для польщователя.
-    """
-    pass

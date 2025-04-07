@@ -1,18 +1,16 @@
-import secrets
-
 from django.contrib.auth import get_user_model
+from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.exceptions import ValidationError
-from django.core.mail import send_mail
 from django.db.models import Avg
-from django.core.validators import RegexValidator
+from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import status
 from rest_framework import serializers
-from rest_framework.exceptions import NotFound, status
-from rest_framework_simplejwt.tokens import AccessToken
 
-from api_yamdb.settings import DEFAULT_FROM_EMAIL
+from api_yamdb.settings import MAX_EMAIL_LENGTH
 from reviews.models import (
     Category, Comment, Genre, Review, Title)
-from .validators import validate_username_me
+from users.models import MAX_LENGTH_USERNAME
+from users.validators import validate_username
 
 
 User = get_user_model()
@@ -95,39 +93,19 @@ class TitleWriteSerializer(serializers.ModelSerializer):
 
     def to_representation(self, title):
         """Определяет, какой сериализатор будет использоваться для чтения."""
+        
         return TitleReadSerializer(title).data
 
 
-class SignUpSerializer(serializers.ModelSerializer): 
-    # Этот сериализатор нам нужен будет только для валидации, создавать юзера через него не нужно. Письма отправляются во вью. Наследуемся от обычного serializers.Serializer.
-    # Нужно описать каждое поле явно указав все требуемые ограничения - длину строк и валидаторы (атрибут validators).
-    # -- Для валидации символов есть готовый валидатор UnicodeUsernameValidator() из django.contrib.auth.validators.
-    # -- Не забыть про валидатор для ника me
-    # Валидацию для комбинации ника и почты описываем в методе validate.
+class SignUpSerializer(serializers.Serializer):
     """
     Сериализатор для создания нового пользователя
     и отправки кода подтверждения.
     """
-    class Meta:
-        model = User
-        fields = ['email', 'username']
-        extra_kwargs = {
-            'email': {
-                'required': True,
-                'validators': []
-            },
-            'username': {
-                'required': True,
-                'validators': [RegexValidator(r'^[\w.@+-]+\Z')]
-            }
-        }
-
-    def validate_username(self, value):
-        """
-        Метод проверяющий поле "username" на соответствие условию
-        создания юзернеймов.
-        """
-        return validate_username_me(value)
+    username = serializers.CharField(
+        max_length=MAX_LENGTH_USERNAME,
+        validators=[UnicodeUsernameValidator(), validate_username])
+    email = serializers.EmailField(max_length=MAX_EMAIL_LENGTH)
 
     def validate(self, data):
         """
@@ -137,87 +115,29 @@ class SignUpSerializer(serializers.ModelSerializer):
         """
         email = data.get('email')
         username = data.get('username')
-        email_exists = User.objects.filter(email=email).exists()
-        username_exists = User.objects.filter(username=username).exists()
-        if email_exists:
-            user = User.objects.get(email=email)
-            if user.username != username:
-                raise ValidationError(
-                    {'email':
-                     ERROR_EMAIL})
-            else:
-                return data
-        if username_exists:
-            raise ValidationError(
-                {'username': ERROR_USERNAME})
+        email_user = User.objects.filter(email=email).first()
+        username_user = User.objects.filter(username=username).first()
+        if email_user != username_user:
+            error_msg = {}
+            if email_user is not None:
+                error_msg['email'] = ERROR_EMAIL
+            if username_user is not None:
+                error_msg['username'] = ERROR_USERNAME
+            raise ValidationError(error_msg)
         return data
 
     def create(self, validated_data):
-        """
-        Создание пользователя и кода подтверждения.
-        """
-        email = validated_data['email']
-        username = validated_data['username']
-        user, created = User.objects.get_or_create(
-            email=email,
-            defaults={
-                'username': username,
-                'confirmation_code': secrets.token_urlsafe(16)  
-                # Общий комментарий по проверочному коду:
-                # Способ создания и проверки кода неплохой, но есть еще более подходящий стандартный default_token_generator, в котором даже хранить confirmatiom_code не нужно.
-                # Для создания кода используй default_token_generator.make_token из from django.contrib.auth.tokens import default_token_generator прокидывая в него объект юзера.
-                # Для проверки токена используй функцию default_token_generator.check_token прокидывая в неё юзера и проверочный код.
-            }
-        )
-        if not created:
-            user.confirmation_code = secrets.token_urlsafe(16)
-            user.save()
-        send_mail(
-            subject='Код для получения токена',
-            message=f'Ваш код: {user.confirmation_code}',
-            from_email=DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=False,
-        )
-        return user
+        return validated_data
 
 
 class TokenObtainSerializer(serializers.Serializer):
     """
-    Сериализатор для создания или обновления токена.
+    Сериализатор для работы с токеном.
     """
-    username = serializers.CharField(max_length=150, required=True) 
-    # Постоянные величины ограничений берем из констант.
-    # Добавить валидаторы. См. 130 п.2.
-    confirmation_code = serializers.CharField(max_length=100, required=True)
-
-    def validate(self, attrs):
-        username = attrs.get('username')
-        confirmation_code = attrs.get('confirmation_code')
-        try: 
-            # get_object_or_404
-            user = User.objects.get(username=username)
-        except User.DoesNotExist:
-            raise NotFound(
-                detail=ERROR_USERNAME,
-                code=status.HTTP_404_NOT_FOUND)
-        if user.confirmation_code != confirmation_code:
-            raise serializers.ValidationError(
-                {'confirmation_code': 'Неверный код подверждения.'})
-        attrs['token'] = str(AccessToken.for_user(user)) 
-        # Сериализатор только проверяет поля. Всю логику представления описываем во вью.
-        # У сериализатора только 2 поля и подмешивать другие в методы которые за это не отвечают не лучшая идея.
-        # Варианта 2 на выбор:
-        # Либо проверку кода вынести во вью
-        # Либо во вью нужно будет второй раз сходить за юзером чтобы отдать токен
-        return attrs
-
-    def to_representation(self, instance): # Лишний метод.
-        return {'token': instance['token']}
-
-    def create(self, validated_data): 
-        # Это не модельный сериализатор. Созданием не занимаемся.
-        return validated_data
+    username = serializers.CharField(
+        max_length=MAX_LENGTH_USERNAME,
+        validators=[UnicodeUsernameValidator(), validate_username])
+    confirmation_code = serializers.CharField(max_length=100)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -226,127 +146,20 @@ class UserSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = User
-        fields = [
-            'username', 'email', 'first_name', 'last_name', 'bio', 'role']
-        extra_kwargs = { 
-            # Лишняя настройка. 
-            # Так как это модельный сериализатор, то все настройки полей (включая валидацию) он подтянет из модели автоматически.
-            # Описывать поля/настройки/валидаторы нет необходимости если мы ничего не меняем.
-            'email': {
-                'required': False
-            },
-            'username': {
-                'required': False,
-                'validators': [RegexValidator(r'^[\w.@+-]+\Z')]
-            }
-        }
-
-    def validate_username(self, value): 
-        # Все методы сериализатора лишние по той же причине
-        """
-        Метод проверяющий поле "username" на соответствие условию
-        создания юзернеймов.
-        """
-        return validate_username_me(value)
-
-    def validate(self, data):
-        if 'username' not in data:
-            raise ValidationError(
-                {'username': ERROR_REQUIRED_VALUE}
-            )
-        if 'email' not in data:
-            raise ValidationError(
-                {'email': ERROR_REQUIRED_VALUE}
-            )
-        if User.objects.filter(username=data['username']).exists():
-            raise serializers.ValidationError(
-                {'username': ERROR_USERNAME}
-            )
-        if User.objects.filter(email=data['email']).exists():
-            raise serializers.ValidationError(
-                {'email': ERROR_EMAIL}
-            )
-        return data
-
-    def create(self, validated_data):
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            password=None,
-            first_name=validated_data.get('first_name', ''),
-            last_name=validated_data.get('last_name', ''),
-            role=validated_data.get('role', 'user'),
-            bio=validated_data.get('bio', '')
-        )
-        return user
+        fields = (
+            'username', 'email', 'first_name', 'last_name', 'bio', 'role')
 
 
-class UserUpdateSerializer(serializers.ModelSerializer): 
-    # Лишний сериализатор. В нем та же самая логика что и в сериализаторе выше.
-    class Meta:
-        model = User
-        fields = [
-            'username', 'email', 'first_name', 'last_name', 'bio', 'role']
-
-    def validate_username(self, value):
-        """
-        Метод проверяющий поле "username" на соответствие условию
-        создания юзернеймов.
-        """
-        return validate_username_me(value)
-
-    def validate(self, attrs):
-        if 'username' in attrs:
-            if User.objects.filter(username=attrs['username']).exists():
-                raise serializers.ValidationError(
-                    {'username': ERROR_USERNAME}
-                )
-        if 'email' in attrs:
-            if User.objects.filter(email=attrs['email']).exists():
-                raise serializers.ValidationError(
-                    {'email': ERROR_EMAIL}
-                )
-        return attrs
-
-
-class MeSerializer(serializers.ModelSerializer): 
-    # Лишнее.
+class MeSerializer(serializers.ModelSerializer):
     """
     Сериализатор для выполнения операций получения экземпляра
     и внесения изменений в собственный профиль.
     """
     class Meta:
         model = User
-        fields = [
-            'username', 'email', 'first_name', 'last_name', 'bio', 'role']
-        read_only_fields = ['role']
-        extra_kwargs = {
-            'username': {
-                'required': True,
-                'validators': [RegexValidator(r'^[\w.@+-]+\Z')]
-            }
-        }
-
-    def validate_username(self, value): 
-        # Этот и следующий метод лишние.
-        """
-        Метод проверяющий поле "username" на соответствие условию
-        создания юзернеймов.
-        """
-        return validate_username_me(value)
-
-    def validate(self, data):
-        if 'username' not in data:
-            return data
-        if User.objects.filter(username=data['username']).exists():
-            raise serializers.ValidationError(
-                {'username': ERROR_USERNAME}
-            )
-        if User.objects.filter(email=data['email']).exists():
-            raise serializers.ValidationError(
-                {'email': ERROR_EMAIL}
-            )
-        return data
+        fields = (
+            'username', 'email', 'first_name', 'last_name', 'bio', 'role')
+        read_only_fields = ('role',)
 
 
 class ReviewSerializer(serializers.ModelSerializer):
