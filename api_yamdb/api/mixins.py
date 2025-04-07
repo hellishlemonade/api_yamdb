@@ -4,8 +4,8 @@ from rest_framework.mixins import (
 from rest_framework.viewsets import GenericViewSet
 
 
-class BaseModelMixin(CreateModelMixin, ListModelMixin, DestroyModelMixin,
-                     GenericViewSet):
+class CreateListDestroyModelMixin(CreateModelMixin, ListModelMixin,
+                                  DestroyModelMixin, GenericViewSet):
     """
     Миксин для создания ViewSet'ов, предоставляющих базовые операции CRUD.
 

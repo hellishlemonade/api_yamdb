@@ -12,7 +12,6 @@ class TitleFilter(FilterSet):
     name = CharFilter(field_name='name', lookup_expr='icontains')
     category = CharFilter(field_name='category__slug', lookup_expr='exact')
     genre = CharFilter(field_name='genre__slug', lookup_expr='exact')
-    year = NumberFilter(field_name='year', lookup_expr='exact')
 
     class Meta:
         model = Title

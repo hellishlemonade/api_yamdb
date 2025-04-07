@@ -32,7 +32,11 @@ class CategorySerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Category
-        exclude = ['id',]
+        exclude = ('id',)
+        # Когда объявляется коллекция, нужно верно выбрать между списком и кортежем(тут список).
+        # Выбор нужно делать осознанно, потому что список изменяемый, а кортеж нет.
+        # Если предполагается, что сюда будет вноситься изменения где то в коде, то нужен список, а если изменений никаких не будет то лучше кортеж.
+        # Тут и далее по всему коду.
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -43,7 +47,7 @@ class GenreSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Genre
-        exclude = ['id',]
+        exclude = ('id', )
 
 
 class TitleReadSerializer(serializers.ModelSerializer):
@@ -54,22 +58,16 @@ class TitleReadSerializer(serializers.ModelSerializer):
     """
     genre = GenreSerializer(read_only=True, many=True)
     category = CategorySerializer(read_only=True)
-    rating = serializers.SerializerMethodField(read_only=True)
+    rating = serializers.IntegerField(read_only=True, default=None)
 
     class Meta:
         model = Title
-        fields = '__all__'
-
-    def get_rating(self, obj):
-        """
-        Возвращает средний рейтинг произведения.
-
-        Если произведение не имеет отзывов, возвращает 0.
-        """
-        annotated_title = Title.objects.annotate(
-            rating=Avg('reviews__score')
-        ).get(pk=obj.pk)
-        return annotated_title.rating or None
+        fields = ('id', 'name', 'year', 'description',
+                  'genre', 'category', 'rating')
+        # Модель может измениться, а с такой настройкой наш АПИ
+        # уже не будет соответствовать спецификации.
+        # Описываем явно поля.
+        # Тут и далее.
 
 
 class TitleWriteSerializer(serializers.ModelSerializer):
@@ -81,36 +79,31 @@ class TitleWriteSerializer(serializers.ModelSerializer):
     genre = serializers.SlugRelatedField(
         slug_field='slug',
         queryset=Genre.objects.all(),
-        many=True
+        many=True,
+        allow_empty=False
     )
     category = serializers.SlugRelatedField(
         slug_field='slug',
-        queryset=Category.objects.all()
+        queryset=Category.objects.all(),
+        allow_null=False,
     )
 
     class Meta:
         model = Title
-        fields = '__all__'
+        fields = ('id', 'name', 'year', 'description',
+                  'genre', 'category',)
 
     def to_representation(self, title):
         """Определяет, какой сериализатор будет использоваться для чтения."""
-        serializer = TitleReadSerializer(title)
-        return serializer.data
-
-    def validate(self, attrs):
-        """
-        Проверяет корректность данных перед сохранением.
-
-        Проверяет наличие категории и жанра, если они предоставлены.
-        """
-        if 'category' in attrs and not attrs.get('category'):
-            raise ValidationError('Необходимо указать категорию.')
-        if 'genre' in attrs and not attrs.get('genre'):
-            raise ValidationError('Необходимо указать хотя бы 1 жанр.')
-        return attrs
+        return TitleReadSerializer(title).data
 
 
-class SignUpSerializer(serializers.ModelSerializer):
+class SignUpSerializer(serializers.ModelSerializer): 
+    # Этот сериализатор нам нужен будет только для валидации, создавать юзера через него не нужно. Письма отправляются во вью. Наследуемся от обычного serializers.Serializer.
+    # Нужно описать каждое поле явно указав все требуемые ограничения - длину строк и валидаторы (атрибут validators).
+    # -- Для валидации символов есть готовый валидатор UnicodeUsernameValidator() из django.contrib.auth.validators.
+    # -- Не забыть про валидатор для ника me
+    # Валидацию для комбинации ника и почты описываем в методе validate.
     """
     Сериализатор для создания нового пользователя
     и отправки кода подтверждения.
@@ -169,7 +162,11 @@ class SignUpSerializer(serializers.ModelSerializer):
             email=email,
             defaults={
                 'username': username,
-                'confirmation_code': secrets.token_urlsafe(16)
+                'confirmation_code': secrets.token_urlsafe(16)  
+                # Общий комментарий по проверочному коду:
+                # Способ создания и проверки кода неплохой, но есть еще более подходящий стандартный default_token_generator, в котором даже хранить confirmatiom_code не нужно.
+                # Для создания кода используй default_token_generator.make_token из from django.contrib.auth.tokens import default_token_generator прокидывая в него объект юзера.
+                # Для проверки токена используй функцию default_token_generator.check_token прокидывая в неё юзера и проверочный код.
             }
         )
         if not created:
@@ -189,13 +186,16 @@ class TokenObtainSerializer(serializers.Serializer):
     """
     Сериализатор для создания или обновления токена.
     """
-    username = serializers.CharField(max_length=150, required=True)
+    username = serializers.CharField(max_length=150, required=True) 
+    # Постоянные величины ограничений берем из констант.
+    # Добавить валидаторы. См. 130 п.2.
     confirmation_code = serializers.CharField(max_length=100, required=True)
 
     def validate(self, attrs):
         username = attrs.get('username')
         confirmation_code = attrs.get('confirmation_code')
-        try:
+        try: 
+            # get_object_or_404
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             raise NotFound(
@@ -204,13 +204,19 @@ class TokenObtainSerializer(serializers.Serializer):
         if user.confirmation_code != confirmation_code:
             raise serializers.ValidationError(
                 {'confirmation_code': 'Неверный код подверждения.'})
-        attrs['token'] = str(AccessToken.for_user(user))
+        attrs['token'] = str(AccessToken.for_user(user)) 
+        # Сериализатор только проверяет поля. Всю логику представления описываем во вью.
+        # У сериализатора только 2 поля и подмешивать другие в методы которые за это не отвечают не лучшая идея.
+        # Варианта 2 на выбор:
+        # Либо проверку кода вынести во вью
+        # Либо во вью нужно будет второй раз сходить за юзером чтобы отдать токен
         return attrs
 
-    def to_representation(self, instance):
+    def to_representation(self, instance): # Лишний метод.
         return {'token': instance['token']}
 
-    def create(self, validated_data):
+    def create(self, validated_data): 
+        # Это не модельный сериализатор. Созданием не занимаемся.
         return validated_data
 
 
@@ -222,7 +228,10 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'username', 'email', 'first_name', 'last_name', 'bio', 'role']
-        extra_kwargs = {
+        extra_kwargs = { 
+            # Лишняя настройка. 
+            # Так как это модельный сериализатор, то все настройки полей (включая валидацию) он подтянет из модели автоматически.
+            # Описывать поля/настройки/валидаторы нет необходимости если мы ничего не меняем.
             'email': {
                 'required': False
             },
@@ -232,7 +241,8 @@ class UserSerializer(serializers.ModelSerializer):
             }
         }
 
-    def validate_username(self, value):
+    def validate_username(self, value): 
+        # Все методы сериализатора лишние по той же причине
         """
         Метод проверяющий поле "username" на соответствие условию
         создания юзернеймов.
@@ -271,7 +281,8 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
-class UserUpdateSerializer(serializers.ModelSerializer):
+class UserUpdateSerializer(serializers.ModelSerializer): 
+    # Лишний сериализатор. В нем та же самая логика что и в сериализаторе выше.
     class Meta:
         model = User
         fields = [
@@ -298,7 +309,8 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class MeSerializer(serializers.ModelSerializer):
+class MeSerializer(serializers.ModelSerializer): 
+    # Лишнее.
     """
     Сериализатор для выполнения операций получения экземпляра
     и внесения изменений в собственный профиль.
@@ -315,7 +327,8 @@ class MeSerializer(serializers.ModelSerializer):
             }
         }
 
-    def validate_username(self, value):
+    def validate_username(self, value): 
+        # Этот и следующий метод лишние.
         """
         Метод проверяющий поле "username" на соответствие условию
         создания юзернеймов.
