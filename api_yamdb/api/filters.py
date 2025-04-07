@@ -1,4 +1,4 @@
-from django_filters import FilterSet, CharFilter, NumberFilter
+from django_filters import FilterSet, CharFilter
 
 from reviews.models import Title
 

@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 
-from reviews.models import Category, Comment, Genre, Title_genre, Review, Title
+from reviews.models import Category, Comment, Genre, Review, Title
 
 CSV_FILES_DIR = os.path.join(settings.BASE_DIR, 'static/data')
 
