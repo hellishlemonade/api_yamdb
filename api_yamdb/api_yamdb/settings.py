@@ -116,6 +116,10 @@ EMAIL_FILE_PATH = BASE_DIR / 'sent_emails'
 
 DEFAULT_FROM_EMAIL = 'api@yandex.ru'
 
+DEFAULT_NAME_LENGTH = 256
+
+DEFAULT_SLUG_LENGTH = 50
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',

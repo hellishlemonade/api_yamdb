@@ -3,7 +3,6 @@ import secrets
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
-from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django.core.validators import RegexValidator
 from rest_framework.exceptions import status
@@ -33,7 +32,7 @@ class CategorySerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Category
-        exclude = ['id', ] 
+        exclude = ('id',)
         # Когда объявляется коллекция, нужно верно выбрать между списком и кортежем(тут список).
         # Выбор нужно делать осознанно, потому что список изменяемый, а кортеж нет.
         # Если предполагается, что сюда будет вноситься изменения где то в коде, то нужен список, а если изменений никаких не будет то лучше кортеж.
@@ -48,7 +47,7 @@ class GenreSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Genre
-        exclude = ['id', ]
+        exclude = ('id', )
 
 
 class TitleReadSerializer(serializers.ModelSerializer):
@@ -59,31 +58,16 @@ class TitleReadSerializer(serializers.ModelSerializer):
     """
     genre = GenreSerializer(read_only=True, many=True)
     category = CategorySerializer(read_only=True)
-    rating = serializers.SerializerMethodField(read_only=True) 
-    # Тут хватит IntegerField,
-    # в котором надо будет указать
-    # параметр default (дефолтом будет None).
+    rating = serializers.IntegerField(read_only=True, default=None)
 
     class Meta:
         model = Title
-        fields = '__all__' 
+        fields = ('id', 'name', 'year', 'description',
+                  'genre', 'category', 'rating')
         # Модель может измениться, а с такой настройкой наш АПИ
         # уже не будет соответствовать спецификации.
         # Описываем явно поля.
         # Тут и далее.
-
-    def get_rating(self, obj): 
-        # Такой подход породит множество запросов в БД (отдельный запрос для каждого элемента QuerySet).
-        # Нужно изменить подход: добавьте атрибут rating для всех элементов QuerySet путем его аннотирования во вью.
-        """
-        Возвращает средний рейтинг произведения.
-
-        Если произведение не имеет отзывов, возвращает 0.
-        """
-        annotated_title = Title.objects.annotate(
-            rating=Avg('reviews__score')
-        ).get(pk=obj.pk)
-        return annotated_title.rating or None
 
 
 class TitleWriteSerializer(serializers.ModelSerializer):
@@ -95,36 +79,23 @@ class TitleWriteSerializer(serializers.ModelSerializer):
     genre = serializers.SlugRelatedField(
         slug_field='slug',
         queryset=Genre.objects.all(),
-        many=True
+        many=True,
+        allow_empty=False
     )
     category = serializers.SlugRelatedField(
         slug_field='slug',
-        queryset=Category.objects.all()
+        queryset=Category.objects.all(),
+        allow_null=False,
     )
 
     class Meta:
         model = Title
-        fields = '__all__'
+        fields = ('id', 'name', 'year', 'description',
+                  'genre', 'category',)
 
     def to_representation(self, title):
         """Определяет, какой сериализатор будет использоваться для чтения."""
-        serializer = TitleReadSerializer(title) 
-        # Одноразовая переменная.
-        return serializer.data
-
-    def validate(self, attrs): 
-        # Да, нельзя создавать произведение если у жанра указан пустой список.
-        # Но метод лишний, смотрим в сторону атрибутов allow_null и allow_empty.
-        """
-        Проверяет корректность данных перед сохранением.
-
-        Проверяет наличие категории и жанра, если они предоставлены.
-        """
-        if 'category' in attrs and not attrs.get('category'):
-            raise ValidationError('Необходимо указать категорию.')
-        if 'genre' in attrs and not attrs.get('genre'):
-            raise ValidationError('Необходимо указать хотя бы 1 жанр.')
-        return attrs
+        return TitleReadSerializer(title).data
 
 
 class SignUpSerializer(serializers.ModelSerializer): 

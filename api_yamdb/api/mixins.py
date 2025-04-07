@@ -4,10 +4,8 @@ from rest_framework.mixins import (
 from rest_framework.viewsets import GenericViewSet
 
 
-class BaseModelMixin(CreateModelMixin, ListModelMixin, DestroyModelMixin, 
-                     # Имя вьюсету дают согласно действиям которые реализуется этот вьюсет.
-                     # Загляни в документацию и посмотри в примере на именование кастомного вьюсета.
-                     GenericViewSet):
+class CreateListDestroyModelMixin(CreateModelMixin, ListModelMixin,
+                                  DestroyModelMixin, GenericViewSet):
     """
     Миксин для создания ViewSet'ов, предоставляющих базовые операции CRUD.
 

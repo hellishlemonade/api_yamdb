@@ -76,6 +76,20 @@ python3 manage.py migrate
 python3 manage.py runserver
 ```
 
+Импортировать данные из .csv файлов:
+
+```
+python3 manage.py csv_import
+```
+Перед этим поместить необходимые файлы в папку api_yamdb/api_yamdb/static/data со следующими названиями:
++ category.csv
++ comments.csv
++ genre_title.csv
++ genre.csv
++ review.csv
++ titles.csv
++ users.csv
+
 ### Некоторые примеры запросов к API-эндпоинтам
 ```
 /api/v1/titles/{title_id}/reviews/

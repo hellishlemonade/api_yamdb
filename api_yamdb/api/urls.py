@@ -16,25 +16,22 @@ VERSION = 'v1'
 AUTH = 'auth'
 
 
-router = SimpleRouter()
-# Имя роутера должно содержать номер версии нашей API.
-# Так избавимся от путаницы при появлении новых версий.
-# Добавь префикс с номером версии к имени переменной.
-router.register('titles', TitleViewSet, basename='titles')
-router.register('genres', GenreViewSet, basename='genres')
-router.register('categories', CategoryViewSet, basename='categories')
-router.register(f'{AUTH}/signup', SignUpViewSet)
-router.register(f'{AUTH}/token', TokenViewSet)
-router.register('users', UserAdminViewSet)
-router.register(
+v1_router = SimpleRouter()
+v1_router.register('titles', TitleViewSet, basename='titles')
+v1_router.register('genres', GenreViewSet, basename='genres')
+v1_router.register('categories', CategoryViewSet, basename='categories')
+v1_router.register(f'{AUTH}/signup', SignUpViewSet)
+v1_router.register(f'{AUTH}/token', TokenViewSet)
+v1_router.register('users', UserAdminViewSet)
+v1_router.register(
     r'titles/(?P<title_id>\d+)/reviews',
     ReviewViewSet,
     basename='reviews')
-router.register(
+v1_router.register(
     r'titles/(?P<title_id>\d+)/reviews/(?P<review_id>\d+)/comments',
     CommentViewSet,
     basename='comments')
 
 urlpatterns = [
-    path(f'{VERSION}/', include(router.urls)),
+    path(f'{VERSION}/', include(v1_router.urls)),
 ]

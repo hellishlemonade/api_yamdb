@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 
+from api_yamdb.settings import DEFAULT_NAME_LENGTH, DEFAULT_SLUG_LENGTH
 from .validators import validate_year
 
 User = get_user_model()
@@ -48,14 +49,13 @@ class Title(models.Model):
     """
     name = models.CharField(
         verbose_name='Название',
-        max_length=256,
+        max_length=DEFAULT_NAME_LENGTH,
         # Для всех дублирующихся размеров текстовых полей в моделях и сериализаторах нужно завести константы в settings.py.
         # Тут и далее все значения ограничений берем из констант.
         help_text='Название произведения',
         db_index=True,  # поиск по имени произведения - частая операция
     )
-    year = models.IntegerField(
-        # SmallIntegerField
+    year = models.SmallIntegerField(
         verbose_name='Год создания',
         help_text='Год создания произведения',
         validators=[validate_year]
@@ -67,9 +67,6 @@ class Title(models.Model):
     )
     genre = models.ManyToManyField(
         'Genre',
-        through='Title_genre',
-        # Точно такую же модель для m2m поля Джанго создаст самостоятельно. 
-        # Лишнее.
         verbose_name='Жанр',
         help_text='Жанр произведения',
         related_name='titles',
@@ -86,12 +83,13 @@ class Title(models.Model):
     class Meta:
         verbose_name = 'Произведение'
         verbose_name_plural = 'Произведения'
+        ordering = ('name',)
 
     def __str__(self):
         # По такому строковому представлению не понятно к какому объекту оно принадлежит.
         # Строковое представление делаем более содержательным.
         # Тут и далее по всем моделям.
-        return self.name
+        return f'{self.category} {self.name}'
 
 
 class Genre(models.Model):
@@ -111,12 +109,12 @@ class Genre(models.Model):
     """
     name = models.CharField(
         verbose_name='Название жанра',
-        max_length=256,
+        max_length=DEFAULT_NAME_LENGTH,
         help_text='Название жанра'
     )
     slug = models.SlugField(
         verbose_name='Слаг жанра',
-        max_length=50,
+        max_length=DEFAULT_SLUG_LENGTH,
         help_text='Уникальный слаг жанра',
         unique=True,
         db_index=True
@@ -125,38 +123,10 @@ class Genre(models.Model):
     class Meta:
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
+        ordering = ('name',)
 
     def __str__(self):
-        return self.name
-
-
-class Title_genre(models.Model):
-    # На будущее:
-    # Классы мы пишем в стиле CamelCase.
-    # Можешь посмотреть в гайдлайне нотацию для остальных типов.
-    """
-    Модель для представления связи между жанрами и произведениями.
-
-    Поля:
-        title (ForeignKey): Связь с моделью Title.
-        genre (ForeignKey): Связь с моделью Genre.
-
-    Методы:
-        __str__: Возвращает строковое представление: название - жанр.
-    """
-    title = models.ForeignKey(
-        Title,
-        on_delete=models.CASCADE,
-        related_name='title_genre'
-    )
-    genre = models.ForeignKey(
-        Genre,
-        on_delete=models.CASCADE,
-        related_name='title_genre'
-    )
-
-    def __str__(self):
-        return f'{self.title} - {self.genre}'
+        return f'Жанр {self.name}'
 
 
 class Category(models.Model):
@@ -176,12 +146,12 @@ class Category(models.Model):
     """
     name = models.CharField(
         verbose_name='Название категории',
-        max_length=256,
+        max_length=DEFAULT_NAME_LENGTH,
         help_text='Название категории'
     )
     slug = models.SlugField(
         verbose_name='Слаг категории',
-        max_length=50,
+        max_length=DEFAULT_SLUG_LENGTH,
         help_text='Уникальный слаг категории',
         unique=True,
         db_index=True
@@ -190,9 +160,10 @@ class Category(models.Model):
     class Meta:
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
+        ordering = ('name',)
 
     def __str__(self):
-        return self.name
+        return f'Категория {self.name}'
 
 
 class Review(models.Model):
