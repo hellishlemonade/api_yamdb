@@ -5,13 +5,12 @@ from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
+from api_yamdb.settings import MAX_EMAIL_LENGTH
 from reviews.models import (
     Category, Comment, Genre, RATING_VALUES, Review, Title)
 from users.models import MAX_LENGTH_USERNAME
 from users.validators import validate_username
 
-
-MAX_LENGTH_EMAIL = 254
 
 User = get_user_model()
 
@@ -131,7 +130,7 @@ class SignUpSerializer(serializers.Serializer):
     username = serializers.CharField(
         max_length=MAX_LENGTH_USERNAME,
         validators=[UnicodeUsernameValidator(), validate_username])
-    email = serializers.EmailField(max_length=MAX_LENGTH_EMAIL)
+    email = serializers.EmailField(max_length=MAX_EMAIL_LENGTH)
 
     def validate(self, data):
         """
