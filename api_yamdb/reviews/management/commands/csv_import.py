@@ -16,7 +16,6 @@ CSV_FILES_MAPPING = {
     Category: 'category.csv',
     Genre: 'genre.csv',
     Title: 'titles.csv',
-    Title_genre: 'genre_title.csv',
     Review: 'review.csv',
     Comment: 'comments.csv',
 }

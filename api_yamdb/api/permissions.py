@@ -17,11 +17,7 @@ class IsAdminOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return True
-        return (
-            request.user.is_superuser 
-            #Атрибут is_superuser нужно учесть в методе is_admin. Тут и далее.
-            or (request.user.is_authenticated and request.user.is_admin())
-        )
+        return request.user.is_authenticated and request.user.is_admin()
 
 
 class ContentManagePermission(permissions.BasePermission):
@@ -38,17 +34,15 @@ class ContentManagePermission(permissions.BasePermission):
                 or request.user.is_authenticated)
 
     def has_object_permission(self, request, view, obj):
-        return any([ 
-            # Лишняя функция.
-            request.method in permissions.SAFE_METHODS,
-            (request.user.is_authenticated and obj.author == request.user), 
-            # Не повторяйся. Проверяем аутентификацию один раз в выражении.
-            # Можно лучше:
-            # Проверку требующую запрос в БД лучше размещать в самом конце,
-            # для того, чтобы если остальные проверки не дали False лишний запрос в БД бы не совершался.
-            (request.user.is_authenticated and request.user.is_moderator()),
-            (request.user.is_authenticated and request.user.is_admin())
-        ])
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if not request.user.is_authenticated:
+            return False
+        return (
+            obj.author == request.user
+            or request.user.is_moderator()
+            or request.user.is_admin()
+            )
 
 
 class IsAdminPermission(permissions.BasePermission):

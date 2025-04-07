@@ -2,6 +2,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, filters
 from rest_framework.filters import SearchFilter
@@ -14,7 +15,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 from api_yamdb.settings import DEFAULT_FROM_EMAIL
 from reviews.models import Category, Comment, Genre, Review, Title
 from .filters import TitleFilter
-from .mixins import BaseModelMixin
+from .mixins import CreateListDestroyModelMixin
 from .permissions import (
     ContentManagePermission,
     IsAdminOrReadOnly,
@@ -63,8 +64,10 @@ class TitleViewSet(viewsets.ModelViewSet):
         возможность фильтрации произведений по различным полям,
         определенным в TitleFilter (например, по категории, жанру, году)."
     """
-    queryset = Title.objects.all()
-    # Рассчитываем рейтинг сразу при запросе в queryset используя annotate и функцию Avg.
+    queryset = (Title.objects
+                .annotate(rating=Avg('reviews__score'))
+                .all()
+                )
     http_method_names = ['get', 'post', 'patch', 'delete', ]
     permission_classes = [IsAdminOrReadOnly, ]
     filter_backends = [DjangoFilterBackend, ]
@@ -84,7 +87,7 @@ class TitleViewSet(viewsets.ModelViewSet):
         return TitleWriteSerializer
 
 
-class GenreViewSet(BaseModelMixin):
+class GenreViewSet(CreateListDestroyModelMixin):
     """
     ViewSet для модели Genre.
 
@@ -113,7 +116,7 @@ class GenreViewSet(BaseModelMixin):
     lookup_field:
         Поле, используемое для поиска жанра в URL : 'slug'.
 
-    Действия, предоставляемые ViewSet'ом (унаследованы от BaseModelMixin):
+    Действия, предоставляемые ViewSet'ом (унаследованы от CreateListDestroyModelMixin):
     - create (POST): Создание нового жанра.
     - list (GET): Получение списка жанров с возможностью фильтрации по имени.
     - destroy (DELETE): Удаление жанра по слагу (lookup_field = 'slug').
@@ -126,7 +129,7 @@ class GenreViewSet(BaseModelMixin):
     lookup_field = 'slug'
 
 
-class CategoryViewSet(BaseModelMixin):
+class CategoryViewSet(CreateListDestroyModelMixin):
     """
     ViewSet для модели Category.
 
@@ -215,8 +218,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
     """
     ViewSet для модели Review.
     """
-    queryset = Review.objects.all()
-    # Если описан метод, то атрибут лишний.
     serializer_class = ReviewSerializer
     permission_classes = (ContentManagePermission,)
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
@@ -238,8 +239,6 @@ class CommentViewSet(viewsets.ModelViewSet):
     """
     ViewSet для модели Comment.
     """
-    queryset = Comment.objects.all()
-    # См. 220.
     serializer_class = CommentSerializer
     permission_classes = (ContentManagePermission,)
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
