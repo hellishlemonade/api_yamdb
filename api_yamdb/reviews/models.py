@@ -44,7 +44,7 @@ class Title(models.Model):
         verbose_name='Название',
         max_length=DEFAULT_NAME_LENGTH,
         help_text='Название произведения',
-        db_index=True,  # поиск по имени произведения - частая операция
+        db_index=True,
     )
     year = models.SmallIntegerField(
         verbose_name='Год создания',
