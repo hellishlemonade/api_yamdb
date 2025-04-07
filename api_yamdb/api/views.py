@@ -1,15 +1,21 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, status, filters
+from rest_framework import viewsets, filters
 from rest_framework.filters import SearchFilter
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.exceptions import MethodNotAllowed
+from rest_framework.exceptions import (
+    NotFound, ValidationError)
+from rest_framework_simplejwt.tokens import AccessToken
 
+from api_yamdb.settings import DEFAULT_FROM_EMAIL
 from reviews.models import Category, Comment, Genre, Review, Title
 from .filters import TitleFilter
-from .mixins import BaseModelMixin, CreateUserModelMixin
+from .mixins import CreateListDestroyModelMixin
 from .permissions import (
     ContentManagePermission,
     IsAdminOrReadOnly,
@@ -26,7 +32,6 @@ from .serializers import (
     TitleWriteSerializer,
     TokenObtainSerializer,
     UserSerializer,
-    UserUpdateSerializer,
     MeSerializer
 )
 
@@ -59,7 +64,10 @@ class TitleViewSet(viewsets.ModelViewSet):
         возможность фильтрации произведений по различным полям,
         определенным в TitleFilter (например, по категории, жанру, году)."
     """
-    queryset = Title.objects.all()
+    queryset = (Title.objects
+                .annotate(rating=Avg('reviews__score'))
+                .all()
+                )
     http_method_names = ['get', 'post', 'patch', 'delete', ]
     permission_classes = [IsAdminOrReadOnly, ]
     filter_backends = [DjangoFilterBackend, ]
@@ -79,7 +87,7 @@ class TitleViewSet(viewsets.ModelViewSet):
         return TitleWriteSerializer
 
 
-class GenreViewSet(BaseModelMixin):
+class GenreViewSet(CreateListDestroyModelMixin):
     """
     ViewSet для модели Genre.
 
@@ -108,7 +116,8 @@ class GenreViewSet(BaseModelMixin):
     lookup_field:
         Поле, используемое для поиска жанра в URL : 'slug'.
 
-    Действия, предоставляемые ViewSet'ом (унаследованы от BaseModelMixin):
+    Действия, предоставляемые ViewSet'ом (унаследованы от
+    CreateListDestroyModelMixin):
     - create (POST): Создание нового жанра.
     - list (GET): Получение списка жанров с возможностью фильтрации по имени.
     - destroy (DELETE): Удаление жанра по слагу (lookup_field = 'slug').
@@ -121,7 +130,7 @@ class GenreViewSet(BaseModelMixin):
     lookup_field = 'slug'
 
 
-class CategoryViewSet(BaseModelMixin):
+class CategoryViewSet(CreateListDestroyModelMixin):
     """
     ViewSet для модели Category.
 
@@ -165,51 +174,51 @@ class CategoryViewSet(BaseModelMixin):
     lookup_field = 'slug'
 
 
-class SignUpViewSet(CreateUserModelMixin):
-    """
-    ViewSet для модели CustomUser.
-
-    Наследуясь от CreateUserModelMixin позволяет создавать пользователей
-    и коды подтверждения с помощью сериализатора.
-    """
+class AuthViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    serializer_class = SignUpSerializer
+    http_method_names = ('post',)
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+    @action(methods=('post',), detail=False)
+    def signup(self, request):
+        serializer = SignUpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        response_data = serializer.data
-        headers = self.get_success_headers(serializer.data)
-        return Response(
-            response_data, status=status.HTTP_200_OK, headers=headers)
+        user, _ = User.objects.get_or_create(
+            username=request.data['username'], email=request.data['email']
+        )
+        serializer.save()
+        token = default_token_generator.make_token(user)
+        send_mail(
+            subject='Код для получения токена',
+            message=f'Ваш код: {token}',
+            from_email=DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        return Response(data=serializer.data)
 
-
-class TokenViewSet(CreateUserModelMixin):
-    """
-    ViewSet для модели CustomUser.
-
-    Наследуясь от CreateUserModelMixin позволяет создавать токены для
-    пользователей с помощью сериализатора.
-    """
-    queryset = User.objects.all()
-    serializer_class = TokenObtainSerializer
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+    @action(methods=('post',), detail=False)
+    def token(self, request):
+        serializer = TokenObtainSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        response_data = serializer.data
-        headers = self.get_success_headers(serializer.data)
-        return Response(
-            response_data, status=status.HTTP_200_OK, headers=headers)
+        user = User.objects.filter(username=request.data['username']).first()
+        if not user or not default_token_generator.check_token(
+            user, request.data['confirmation_code']
+        ):
+            if not user:
+                raise NotFound({'username': 'Пользователь не найден.'})
+            if not default_token_generator.check_token(
+                user, request.data['confirmation_code']
+            ):
+                raise ValidationError(
+                    {'confirmation_code': 'Неверный код подтверждения.'})
+        token = AccessToken.for_user(user)
+        return Response({'token': str(token)})
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
     """
     ViewSet для модели Review.
     """
-    queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     permission_classes = (ContentManagePermission,)
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
@@ -231,7 +240,6 @@ class CommentViewSet(viewsets.ModelViewSet):
     """
     ViewSet для модели Comment.
     """
-    queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = (ContentManagePermission,)
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
@@ -241,6 +249,21 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Comment.objects.filter(review=self.get_review())
+
+    def get_object(self):
+        review_id = self.kwargs['review_id']
+        if (
+            not Review.objects.filter(
+                id=review_id,
+                title__id=self.kwargs['title_id']
+            ).exists()
+            or not Comment.objects.filter(
+                id=self.kwargs['pk'],
+                review__id=review_id
+            ).exists()
+        ):
+            raise NotFound()
+        return super().get_object()
 
     def perform_create(self, serializer):
         serializer.save(
@@ -257,28 +280,21 @@ class UserAdminViewSet(viewsets.ModelViewSet):
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAdminPermission]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['username']
+    permission_classes = (IsAdminPermission,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('username',)
     lookup_field = 'username'
+    http_method_names = ('get', 'post', 'patch', 'delete')
 
     def get_serializer_class(self):
         if self.action == 'me':
             return MeSerializer
-        if self.request.method == 'PATCH':
-            return UserUpdateSerializer
         return UserSerializer
-
-    def update(self, request, *args, **kwargs):
-        """Блокировка PUT запросов"""
-        if request.method == 'PUT':
-            raise MethodNotAllowed('PUT')
-        return super().update(request, *args, **kwargs)
 
     @action(
         detail=False,
-        methods=['get', 'patch'],
-        permission_classes=[IsUserPermissions]
+        methods=('get', 'patch'),
+        permission_classes=(IsUserPermissions,)
     )
     def me(self, request):
         """Эндпоинт /me/ с отдельным сериализатором"""

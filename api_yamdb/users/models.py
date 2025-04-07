@@ -1,93 +1,62 @@
-import secrets
-
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import validate_email
-from django.core.exceptions import ValidationError
+from django.contrib.auth.validators import UnicodeUsernameValidator
+
+from .validators import validate_username
 
 
-class CustomUser(AbstractUser):
+MAX_LENGTH_USERNAME = 150
+MAX_LENGTH_ROLE = 100
+
+
+class UserProfile(AbstractUser):
     """
     Кастомная модель юзера. Содержит дополнительные поля, расширяющие
-    дефолтную модель, такие как: "confirmation_code", ""bio", "role".
+    дефолтную модель, такие как: "bio", "role".
     """
-    USER = 'user'
-    MODERATOR = 'moderator'
-    ADMIN = 'admin'
-    USERS = [
-        (USER, 'Пользователь'),
-        (MODERATOR, 'Модератор'),
-        (ADMIN, 'Администратор'),
-    ]
-
-    password = models.CharField(
-        'Пароль',
-        max_length=150,
-        blank=True,
-        null=True)
+    class UsersRole(models.TextChoices):
+        USER = 'user'
+        MODERATOR = 'moderator'
+        ADMIN = 'admin'
 
     username = models.CharField(
         'Никнейм',
-        max_length=150,
+        max_length=MAX_LENGTH_USERNAME,
         unique=True,
-        blank=False,
-        null=False)
+        validators=[UnicodeUsernameValidator(), validate_username]
+    )
 
     email = models.EmailField(
         'Email',
-        max_length=254,
-        unique=True,
-        blank=False,
-        null=False,
-        validators=[validate_email])
+        unique=True
+    )
 
-    confirmation_code = models.CharField(
-        'Код подтверждения',
-        max_length=100,
-        blank=False,
-        null=False)
-
-    bio = models.CharField(
+    bio = models.TextField(
         'Описание',
-        max_length=254,
         blank=True,
-        null=True)
+    )
 
     role = models.CharField(
         'Роль',
-        max_length=10,
-        choices=USERS,
-        default=USER,
-        blank=False,
-        null=False)
+        max_length=MAX_LENGTH_ROLE,
+        choices=UsersRole.choices,
+        default=UsersRole.USER,
+    )
 
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
 
-    def clean(self):
-        super().clean()
-        if self.username.lower() == 'me':
-            raise ValidationError('Использование имени "me" под запретом.')
-        if not self.email:
-            raise ValidationError('Email обязателен для заполнения.')
-
-    def save(self, *args, **kwargs):
-        if not self.confirmation_code:
-            self.confirmation_code = secrets.token_urlsafe(16)
-        super().save(*args, **kwargs)
-
-    def is_user(self):
-        """Проверяет, является ли пользователь аутентифицированным."""
-        return self.role == self.USER
-
     def is_moderator(self):
         """Проверяет, является ли пользователь модератором."""
-        return self.role == self.MODERATOR
+        return self.role == self.UsersRole.MODERATOR
 
     def is_admin(self):
         """Проверяет, является ли пользователь администратором."""
-        return self.role == self.ADMIN
+        return self.role == self.UsersRole.ADMIN or self.is_superuser
 
     def __str__(self):
-        return self.username
+        return (
+            f'username: {self.username},'
+            f'email: {self.email}.'
+        )
