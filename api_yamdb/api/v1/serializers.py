@@ -16,7 +16,7 @@ User = get_user_model()
 
 ERROR_USERNAME = 'Пользователь с таким username уже существует.'
 ERROR_EMAIL = 'Пользователь с таким email уже существует.'
-ERROR_REQUIRED_VALUE = 'Отсутствует обязательное поле.'
+MAX_LENGTH_CODE = 100
 RATING_VALUES = [(i, str(i)) for i in range(1, 11)]
 
 
@@ -116,10 +116,6 @@ class SignUpSerializer(serializers.Serializer):
             raise ValidationError(error_msg)
         return data
 
-    def create(self, validated_data):
-        # Лишний метод.
-        return validated_data
-
 
 class TokenObtainSerializer(serializers.Serializer):
     """
@@ -128,8 +124,7 @@ class TokenObtainSerializer(serializers.Serializer):
     username = serializers.CharField(
         max_length=MAX_LENGTH_USERNAME,
         validators=[UnicodeUsernameValidator(), validate_username])
-    confirmation_code = serializers.CharField(max_length=100)
-    # Постоянные величины ограничений берем из констант.
+    confirmation_code = serializers.CharField(max_length=MAX_LENGTH_CODE)
 
 
 class UserSerializer(serializers.ModelSerializer):

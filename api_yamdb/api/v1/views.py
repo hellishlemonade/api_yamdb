@@ -6,7 +6,7 @@ from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, filters
 from rest_framework.filters import SearchFilter
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.exceptions import (
     NotFound, ValidationError)
@@ -174,48 +174,36 @@ class CategoryViewSet(CreateListDestroyModelMixin):
     lookup_field = 'slug'
 
 
-class AuthViewSet(viewsets.ModelViewSet):
-    # Нам не нужен целый вьюсет. 
-    # Для эндпоинов auth/ нужно использовать декораторы @api_view и @permission_classes из rest_framework.decorators.
-    queryset = User.objects.all()
-    http_method_names = ('post',)
+@api_view(['POST'])
+def signup(request):
+    serializer = SignUpSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    user, _ = User.objects.get_or_create(
+        username=request.data['username'], email=request.data['email']
+    )
+    token = default_token_generator.make_token(user)
+    send_mail(
+        subject='Код для получения токена',
+        message=f'Ваш код: {token}',
+        from_email=DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
+    return Response(data=serializer.data)
 
-    @action(methods=('post',), detail=False)
-    def signup(self, request):
-        serializer = SignUpSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user, _ = User.objects.get_or_create(
-            username=request.data['username'], email=request.data['email']
-        )
-        serializer.save()
-        token = default_token_generator.make_token(user)
-        send_mail(
-            subject='Код для получения токена',
-            message=f'Ваш код: {token}',
-            from_email=DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=False,
-        )
-        return Response(data=serializer.data)
 
-    @action(methods=('post',), detail=False)
-    def token(self, request):
-        serializer = TokenObtainSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = User.objects.filter(username=request.data['username']).first()
-        # get_object_or_404
-        if not user or not default_token_generator.check_token(
-            user, request.data['confirmation_code']
-        ):
-            if not user:
-                raise NotFound({'username': 'Пользователь не найден.'})
-            if not default_token_generator.check_token(
-                user, request.data['confirmation_code']
-            ):
-                raise ValidationError(
-                    {'confirmation_code': 'Неверный код подтверждения.'})
-        token = AccessToken.for_user(user)
-        return Response({'token': str(token)})
+@api_view(['POST'])
+def token(request):
+    serializer = TokenObtainSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    user = get_object_or_404(username=request.data['username'])
+    if not default_token_generator.check_token(
+        user, request.data['confirmation_code']
+    ):
+        raise ValidationError(
+            {'confirmation_code': 'Неверный код подтверждения.'})
+    token = AccessToken.for_user(user)
+    return Response({'token': str(token)})
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
