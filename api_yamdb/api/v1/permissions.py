@@ -15,12 +15,8 @@ class IsAdminOrReadOnly(permissions.BasePermission):
     но изменяться только администраторами.
     """
     def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-            # Конструкцию нужно вынести в одну строку, и с помощью оператора or объединить оба условия.
-            # return ... or ... 
-            # В случае если первое условие будет истинным следующей проверки не последует и вернется True.
-        return request.user.is_authenticated and request.user.is_admin()
+        return (request.method in permissions.SAFE_METHODS
+                or request.user.is_authenticated and request.user.is_admin())
 
 
 class ContentManagePermission(permissions.BasePermission):
