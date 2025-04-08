@@ -236,27 +236,14 @@ class CommentViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
 
     def get_review(self):
-        return get_object_or_404(Review, id=self.kwargs['review_id'])
-        # Для получения объекта отзыва надо в get_object_or_404 также использовать title_id из запроса, чтобы проверить, корректность запроса.
+        return get_object_or_404(
+            Review,
+            id=self.kwargs['review_id'],
+            title__id=self.kwargs['title_id']
+        )
 
     def get_queryset(self):
         return Comment.objects.filter(review=self.get_review())
-
-    def get_object(self):
-        # Лишний метод.
-        review_id = self.kwargs['review_id']
-        if (
-            not Review.objects.filter(
-                id=review_id,
-                title__id=self.kwargs['title_id']
-            ).exists()
-            or not Comment.objects.filter(
-                id=self.kwargs['pk'],
-                review__id=review_id
-            ).exists()
-        ):
-            raise NotFound()
-        return super().get_object()
 
     def perform_create(self, serializer):
         serializer.save(

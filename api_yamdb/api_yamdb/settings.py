@@ -122,6 +122,10 @@ DEFAULT_NAME_LENGTH = 256
 
 DEFAULT_SLUG_LENGTH = 50
 
+REVIEW_MIN_SCORE = 1
+
+REVIEW_MAX_SCORE = 10
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
