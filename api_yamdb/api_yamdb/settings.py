@@ -137,3 +137,5 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': False,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+FORBIDDEN_NICKNAMES = ['me']
