@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.exceptions import ValidationError
-from rest_framework.exceptions import NotFound
 from rest_framework import serializers
 
 from api_yamdb.settings import MAX_EMAIL_LENGTH
@@ -194,12 +193,3 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ('id', 'text', 'author', 'pub_date')
         read_only_fields = ('review',)
-
-    def validate(self, attrs):
-        # Лишнее. Запрос получается во вьюсете.
-        if not Review.objects.filter(
-            id=self.context['view'].kwargs.get('review_id'),
-            title__id=self.context['view'].kwargs.get('title_id')
-        ).exists():
-            raise NotFound()
-        return super().validate(attrs)

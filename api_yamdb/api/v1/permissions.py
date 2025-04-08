@@ -19,7 +19,7 @@ class IsAdminOrReadOnly(permissions.BasePermission):
                 or request.user.is_authenticated and request.user.is_admin())
 
 
-class ContentManagePermission(permissions.BasePermission):
+class ContentManagePermission(permissions.IsAuthenticatedOrReadOnly):
     """
     Права доступа к контенту: ресурсы reviews и comments.
 
@@ -28,22 +28,12 @@ class ContentManagePermission(permissions.BasePermission):
     """
     message = 'Недостаточно прав.'
 
-    def has_permission(self, request, view):
-    # Похожее разрешение описывает IsAuthenticatedOrReadOnly. Можно наследоваться от него и убрать этот метод.
-        return (request.method in permissions.SAFE_METHODS
-                or request.user.is_authenticated)
-
     def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-            # См. 19.
-        if not request.user.is_authenticated:
-            return False
-        return (
-            obj.author == request.user
-            or request.user.is_moderator()
-            or request.user.is_admin()
-        )
+        return (request.method in permissions.SAFE_METHODS
+                or request.user.is_authenticated
+                and (obj.author == request.user
+                     or request.user.is_moderator()
+                     or request.user.is_admin()))
 
 
 class IsAdminPermission(permissions.BasePermission):
