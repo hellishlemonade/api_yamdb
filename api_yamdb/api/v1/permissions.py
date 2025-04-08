@@ -17,6 +17,9 @@ class IsAdminOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return True
+            # Конструкцию нужно вынести в одну строку, и с помощью оператора or объединить оба условия.
+            # return ... or ... 
+            # В случае если первое условие будет истинным следующей проверки не последует и вернется True.
         return request.user.is_authenticated and request.user.is_admin()
 
 
@@ -30,12 +33,14 @@ class ContentManagePermission(permissions.BasePermission):
     message = 'Недостаточно прав.'
 
     def has_permission(self, request, view):
+    # Похожее разрешение описывает IsAuthenticatedOrReadOnly. Можно наследоваться от него и убрать этот метод.
         return (request.method in permissions.SAFE_METHODS
                 or request.user.is_authenticated)
 
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
+            # См. 19.
         if not request.user.is_authenticated:
             return False
         return (

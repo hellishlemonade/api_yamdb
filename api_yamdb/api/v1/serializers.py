@@ -117,6 +117,7 @@ class SignUpSerializer(serializers.Serializer):
         return data
 
     def create(self, validated_data):
+        # Лишний метод.
         return validated_data
 
 
@@ -128,6 +129,7 @@ class TokenObtainSerializer(serializers.Serializer):
         max_length=MAX_LENGTH_USERNAME,
         validators=[UnicodeUsernameValidator(), validate_username])
     confirmation_code = serializers.CharField(max_length=100)
+    # Постоянные величины ограничений берем из констант.
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -194,6 +196,7 @@ class CommentSerializer(serializers.ModelSerializer):
         read_only_fields = ('review',)
 
     def validate(self, attrs):
+        # Лишнее. Запрос получается во вьюсете.
         if not Review.objects.filter(
             id=self.context['view'].kwargs.get('review_id'),
             title__id=self.context['view'].kwargs.get('title_id')

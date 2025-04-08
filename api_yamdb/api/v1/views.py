@@ -175,6 +175,8 @@ class CategoryViewSet(CreateListDestroyModelMixin):
 
 
 class AuthViewSet(viewsets.ModelViewSet):
+    # Нам не нужен целый вьюсет. 
+    # Для эндпоинов auth/ нужно использовать декораторы @api_view и @permission_classes из rest_framework.decorators.
     queryset = User.objects.all()
     http_method_names = ('post',)
 
@@ -201,6 +203,7 @@ class AuthViewSet(viewsets.ModelViewSet):
         serializer = TokenObtainSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = User.objects.filter(username=request.data['username']).first()
+        # get_object_or_404
         if not user or not default_token_generator.check_token(
             user, request.data['confirmation_code']
         ):
@@ -246,11 +249,13 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def get_review(self):
         return get_object_or_404(Review, id=self.kwargs['review_id'])
+        # Для получения объекта отзыва надо в get_object_or_404 также использовать title_id из запроса, чтобы проверить, корректность запроса.
 
     def get_queryset(self):
         return Comment.objects.filter(review=self.get_review())
 
     def get_object(self):
+        # Лишний метод.
         review_id = self.kwargs['review_id']
         if (
             not Review.objects.filter(

@@ -2,7 +2,9 @@ from django.core.exceptions import ValidationError
 
 
 FORBIDDEN_ME = 'me'
+# Лишняя константа.
 FORBIDDEN_NICKNAMES = [FORBIDDEN_ME]
+# В settings.
 
 
 def validate_username(value):
@@ -13,3 +15,4 @@ def validate_username(value):
         raise ValidationError(
             f'Использование имени "{value}" под запретом.')
     return True
+    # Возвращаемое значение не используется.

@@ -32,4 +32,5 @@ v1_router.register(
 
 urlpatterns = [
     path(f'{VERSION}/', include(v1_router.urls)),
+    # Общий префикс v1 описываем api.urls.
 ]

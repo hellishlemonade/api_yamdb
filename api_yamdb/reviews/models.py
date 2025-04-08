@@ -162,6 +162,8 @@ class Review(models.Model):
     score = models.SmallIntegerField(
         validators=[
             MinValueValidator(1, "Оценка на может быть меньше 1"),
+            # Постоянные величины ограничений берем из констант. В сообщении тоже.
+            # Тут и ниже.
             MaxValueValidator(10, "Оценка на может быть больше 10")
         ]
     )
