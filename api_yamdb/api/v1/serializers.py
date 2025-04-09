@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.exceptions import ValidationError
-from rest_framework.exceptions import NotFound
 from rest_framework import serializers
 
 from api_yamdb.settings import MAX_EMAIL_LENGTH
@@ -16,7 +15,7 @@ User = get_user_model()
 
 ERROR_USERNAME = 'Пользователь с таким username уже существует.'
 ERROR_EMAIL = 'Пользователь с таким email уже существует.'
-ERROR_REQUIRED_VALUE = 'Отсутствует обязательное поле.'
+MAX_LENGTH_CODE = 100
 RATING_VALUES = [(i, str(i)) for i in range(1, 11)]
 
 
@@ -116,9 +115,6 @@ class SignUpSerializer(serializers.Serializer):
             raise ValidationError(error_msg)
         return data
 
-    def create(self, validated_data):
-        return validated_data
-
 
 class TokenObtainSerializer(serializers.Serializer):
     """
@@ -127,7 +123,7 @@ class TokenObtainSerializer(serializers.Serializer):
     username = serializers.CharField(
         max_length=MAX_LENGTH_USERNAME,
         validators=[UnicodeUsernameValidator(), validate_username])
-    confirmation_code = serializers.CharField(max_length=100)
+    confirmation_code = serializers.CharField(max_length=MAX_LENGTH_CODE)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -192,11 +188,3 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ('id', 'text', 'author', 'pub_date')
         read_only_fields = ('review',)
-
-    def validate(self, attrs):
-        if not Review.objects.filter(
-            id=self.context['view'].kwargs.get('review_id'),
-            title__id=self.context['view'].kwargs.get('title_id')
-        ).exists():
-            raise NotFound()
-        return super().validate(attrs)

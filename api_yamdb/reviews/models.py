@@ -1,8 +1,12 @@
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
-
-from api_yamdb.settings import DEFAULT_NAME_LENGTH, DEFAULT_SLUG_LENGTH
+from api_yamdb.settings import (
+    DEFAULT_NAME_LENGTH,
+    DEFAULT_SLUG_LENGTH,
+    REVIEW_MIN_SCORE,
+    REVIEW_MAX_SCORE
+)
 from .validators import validate_year
 
 User = get_user_model()
@@ -161,8 +165,14 @@ class Review(models.Model):
     text = models.TextField()
     score = models.SmallIntegerField(
         validators=[
-            MinValueValidator(1, "Оценка на может быть меньше 1"),
-            MaxValueValidator(10, "Оценка на может быть больше 10")
+            MinValueValidator(
+                REVIEW_MIN_SCORE,
+                f"Оценка на может быть меньше {REVIEW_MIN_SCORE}"
+            ),
+            MaxValueValidator(
+                REVIEW_MAX_SCORE,
+                f"Оценка на может быть больше {REVIEW_MAX_SCORE}"
+            )
         ]
     )
     pub_date = models.DateTimeField(

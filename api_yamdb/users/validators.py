@@ -1,8 +1,6 @@
 from django.core.exceptions import ValidationError
 
-
-FORBIDDEN_ME = 'me'
-FORBIDDEN_NICKNAMES = [FORBIDDEN_ME]
+from api_yamdb.settings import FORBIDDEN_NICKNAMES
 
 
 def validate_username(value):
@@ -12,4 +10,3 @@ def validate_username(value):
     if value.lower() in FORBIDDEN_NICKNAMES:
         raise ValidationError(
             f'Использование имени "{value}" под запретом.')
-    return True
