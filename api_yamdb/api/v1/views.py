@@ -195,7 +195,7 @@ def signup(request):
 def token(request):
     serializer = TokenObtainSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    user = get_object_or_404(username=request.data['username'])
+    user = get_object_or_404(User, username=request.data['username'])
     if not default_token_generator.check_token(
         user, request.data['confirmation_code']
     ):
